@@ -1,6 +1,7 @@
 const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
+const path = require('path');
 const connectDB = require('./config/db');
 
 // Load env vars
@@ -15,10 +16,24 @@ const app = express();
 app.use(express.json());
 
 // Enable CORS
+const allowedOrigins = process.env.NODE_ENV === 'production' 
+    ? [process.env.FRONTEND_URL] 
+    : [process.env.FRONTEND_URL || 'http://localhost:5173'];
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
   credentials: true
 }));
+
+// Static folder for uploads
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Mount routers
 app.use('/api/v1/auth', require('./routes/auth'));
@@ -33,6 +48,7 @@ app.use('/api/v1/emergency-leads', require('./routes/emergencyLeads'));
 app.use('/api/v1/callback-requests', require('./routes/callback'));
 app.use('/api/v1/areas', require('./routes/areas'));
 app.use('/api/v1/admin', require('./routes/admin'));
+app.use('/api/v1/upload', require('./routes/upload'));
 
 app.get('/', (req, res) => {
     res.send('KaamMitra API is running...');

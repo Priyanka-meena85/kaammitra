@@ -97,6 +97,13 @@ const WorkerSchema = new mongoose.Schema({
         enum: ['Registered', 'Pending Verification', 'Verified', 'Rejected', 'Active', 'Blocked'],
         default: 'Registered'
     },
+    profilePhotoUrl: { type: String },
+    profilePhotoPublicId: { type: String },
+    idDocumentUrl: { type: String },
+    idDocumentPublicId: { type: String },
+    addressProofUrl: { type: String },
+    addressProofPublicId: { type: String },
+    documentType: { type: String },
     phoneVerified: {
         type: Boolean,
         default: false
@@ -120,6 +127,8 @@ const WorkerSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
+    submittedAt: { type: Date },
+    verifiedAt: { type: Date },
 
     // Performance & Stats
     trustScore: {
@@ -159,9 +168,9 @@ const WorkerSchema = new mongoose.Schema({
 });
 
 // Encrypt password using bcrypt
-WorkerSchema.pre('save', async function (next) {
+WorkerSchema.pre('save', async function () {
     if (!this.isModified('password')) {
-        next();
+        return;
     }
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);

@@ -16,7 +16,13 @@ const sendTokenResponse = (user, statusCode, res) => {
 // @access  Public
 exports.register = async (req, res) => {
     try {
-        const { role, name, phone, password, services, location, address, city, area, phoneVerified, expectedCharge, skills, experience, workingHoursStart, workingHoursEnd, emergencyAvailable, maxTravelDistance } = req.body;
+        const { 
+            role, name, phone, password, services, location, address, city, area, phoneVerified, 
+            expectedCharge, skills, experience, workingHoursStart, workingHoursEnd, 
+            emergencyAvailable, maxTravelDistance,
+            profilePhotoUrl, profilePhotoPublicId, idDocumentUrl, idDocumentPublicId,
+            addressProofUrl, addressProofPublicId, documentType
+        } = req.body;
 
         if (!phone || !phoneVerified) {
             return res.status(400).json({ success: false, error: 'Phone verification is required' });
@@ -33,7 +39,9 @@ exports.register = async (req, res) => {
             const worker = await Worker.create({
                 name, phone, password, services, location, address, city, area, 
                 phoneVerified: true, isVerified: false, verificationStatus: 'Pending Verification', isBlocked: false,
-                expectedCharge, skills, experience, workingHoursStart, workingHoursEnd, emergencyAvailable, maxTravelDistance
+                expectedCharge, skills, experience, workingHoursStart, workingHoursEnd, emergencyAvailable, maxTravelDistance,
+                profilePhotoUrl, profilePhotoPublicId, idDocumentUrl, idDocumentPublicId,
+                addressProofUrl, addressProofPublicId, documentType
             });
             sendTokenResponse(worker, 201, res);
         } else {

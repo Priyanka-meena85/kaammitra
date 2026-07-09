@@ -6,7 +6,9 @@ const complaintSchema = new mongoose.Schema({
   bookingId: { type: mongoose.Schema.Types.ObjectId, ref: 'Booking', required: true },
   reason: { type: String, required: true },
   description: { type: String, required: true },
-  status: { type: String, enum: ['Open', 'In Progress', 'Resolved', 'Closed'], default: 'Open' },
+  status: { type: String, enum: ['Open', 'In Review', 'Resolved', 'Rejected'], default: 'Open' },
+  adminNote: { type: String },
+  resolvedAt: { type: Date },
   createdAt: { type: Date, default: Date.now }
 });
 

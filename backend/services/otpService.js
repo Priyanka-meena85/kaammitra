@@ -20,13 +20,33 @@ const generateOtp = () => {
  */
 exports.sendOtp = async (phone) => {
     const mode = process.env.OTP_MODE || 'demo';
+    const provider = process.env.OTP_PROVIDER || 'msg91';
+
+    // Rate limiting check
+    const existing = otpStore.get(phone);
+    if (existing) {
+        if (Date.now() < existing.nextResendAllowed) {
+            throw new Error(`Please wait before requesting another OTP.`);
+        }
+        if (existing.attempts >= 3) {
+            if (Date.now() < existing.blockUntil) {
+                throw new Error("Too many attempts. Please try again later.");
+            } else {
+                existing.attempts = 0; // reset
+            }
+        }
+    }
     
     // Generate OTP
     const otp = mode === 'demo' ? '123456' : generateOtp();
     
-    // Store OTP with 5 minute expiry
+    // Store OTP with 5 minute expiry, 1 minute resend limit
     const expiry = Date.now() + 5 * 60 * 1000;
-    otpStore.set(phone, { otp, expiry });
+    const nextResendAllowed = Date.now() + 60 * 1000;
+    const attempts = existing ? existing.attempts + 1 : 1;
+    const blockUntil = attempts >= 3 ? Date.now() + 15 * 60 * 1000 : 0;
+    
+    otpStore.set(phone, { otp, expiry, nextResendAllowed, attempts, blockUntil });
 
     if (mode === 'demo') {
         return {
@@ -34,15 +54,17 @@ exports.sendOtp = async (phone) => {
             message: "Demo OTP sent. Use 123456",
             demoOtp: "123456"
         };
-    } else if (mode === 'fast2sms') {
-        // TODO: Implement Fast2SMS logic here
-        // const apiKey = process.env.OTP_API_KEY;
-        // await axios.post(...)
-        console.log(`Sending real OTP ${otp} via Fast2SMS to ${phone}`);
+    } else if (provider === 'fast2sms') {
+        // Placeholder for Fast2SMS API call
+        console.log(`[Fast2SMS] Sending real OTP ${otp} to ${phone}`);
         return { success: true, message: "OTP sent successfully" };
-    } else if (mode === 'msg91') {
-        // TODO: Implement MSG91 logic here
-        console.log(`Sending real OTP ${otp} via MSG91 to ${phone}`);
+    } else if (provider === 'msg91') {
+        // Placeholder for MSG91 API call
+        console.log(`[MSG91] Sending real OTP ${otp} to ${phone}`);
+        return { success: true, message: "OTP sent successfully" };
+    } else if (provider === 'twilio') {
+        // Placeholder for Twilio API call
+        console.log(`[Twilio] Sending real OTP ${otp} to ${phone}`);
         return { success: true, message: "OTP sent successfully" };
     } else {
         throw new Error("Invalid OTP provider configured");
