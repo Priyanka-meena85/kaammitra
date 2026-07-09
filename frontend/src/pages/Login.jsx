@@ -30,7 +30,7 @@ const Login = () => {
       }
       setStep(2);
     } catch (err) {
-      toast.error(err.response?.data?.message || err.response?.data?.error || 'Failed to send OTP');
+      if (!err.isWakingUp) toast.error(err.response?.data?.message || err.response?.data?.error || 'Failed to send OTP');
     } finally {
       setIsLoading(false);
     }
@@ -48,7 +48,7 @@ const Login = () => {
       toast.success('Login successful!');
       navigate(res.data.user.role === 'worker' ? '/worker-dashboard' : (res.data.user.role === 'admin' ? '/admin' : '/customer-dashboard'));
     } catch (err) {
-      toast.error(err.response?.data?.message || err.response?.data?.error || 'Invalid OTP');
+      if (!err.isWakingUp) toast.error(err.response?.data?.message || err.response?.data?.error || 'Invalid OTP');
     } finally {
       setIsLoading(false);
     }
@@ -63,7 +63,7 @@ const Login = () => {
       toast.success('Login successful!');
       navigate(res.data.user.role === 'worker' ? '/worker-dashboard' : (res.data.user.role === 'admin' ? '/admin' : '/customer-dashboard'));
     } catch (err) {
-      toast.error(err.response?.data?.error || err.response?.data?.message || 'Invalid credentials');
+      if (!err.isWakingUp) toast.error(err.response?.data?.error || err.response?.data?.message || 'Invalid credentials');
     } finally {
       setIsLoading(false);
     }

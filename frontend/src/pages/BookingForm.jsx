@@ -35,7 +35,7 @@ const BookingForm = () => {
     const fetchWorker = async () => {
       try {
         const res = await api.get(`/workers/${workerId}`);
-        setWorker(res.data.data);
+        setWorker(res?.data?.data || null);
       } catch (err) {
         if (import.meta.env.DEV && import.meta.env.VITE_ENABLE_DEMO_DATA === 'true') {
           const dummy = workers.find(w => w.id === parseInt(workerId) || w.id === workerId || w._id === workerId);

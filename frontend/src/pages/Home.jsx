@@ -15,6 +15,7 @@ const Home = () => {
   const navigate = useNavigate();
   const [topWorkers, setTopWorkers] = useState([]);
   const [loadingWorkers, setLoadingWorkers] = useState(true);
+  const [apiError, setApiError] = useState(null);
 
   const [areas, setAreas] = useState([]);
   const [selectedCity, setSelectedCity] = useState('');
@@ -25,9 +26,10 @@ const Home = () => {
     const fetchAreas = async () => {
       try {
         const res = await api.get('/areas');
-        setAreas(res.data.data);
+        setAreas(res?.data?.data || []);
       } catch (err) {
         console.error('Failed to fetch areas', err);
+        setAreas([]);
       }
     };
     fetchAreas();
@@ -38,14 +40,16 @@ const Home = () => {
       try {
         const url = selectedCity ? `/workers?limit=4&city=${selectedCity}` : '/workers?limit=4';
         const res = await api.get(url);
-        if (res.data.data.length > 0) {
-          setTopWorkers(res.data.data.slice(0, 4));
+        const workersData = res?.data?.data || [];
+        if (workersData.length > 0) {
+          setTopWorkers(workersData.slice(0, 4));
         } else {
           setTopWorkers([]);
         }
       } catch (err) {
         console.error('Failed to fetch workers', err);
         setTopWorkers([]);
+        if (err.isWakingUp) setApiError('Server is waking up. Please wait 30 seconds and try again.');
       } finally {
         setLoadingWorkers(false);
       }
@@ -245,6 +249,13 @@ const Home = () => {
           <div className="grid lg:grid-cols-2 gap-6">
             {loadingWorkers ? (
               <div className="col-span-2 text-center text-text-gray py-4">Loading workers...</div>
+            ) : apiError ? (
+              <div className="col-span-2 text-center text-orange-600 bg-orange-50 p-4 rounded-xl border border-orange-200 font-medium flex items-center justify-center gap-2">
+                <AlertTriangle size={20} />
+                {apiError}
+              </div>
+            ) : topWorkers.length === 0 ? (
+              <div className="col-span-2 text-center text-text-gray py-4">No workers available.</div>
             ) : (
               topWorkers.map((worker, index) => (
                 <WorkerCard key={worker._id || worker.id || index} worker={worker} />

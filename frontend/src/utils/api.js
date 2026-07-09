@@ -3,6 +3,7 @@ import toast from 'react-hot-toast';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1',
+  timeout: 15000, // 15 seconds timeout
   headers: {
     'Content-Type': 'application/json'
   }
@@ -26,8 +27,11 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (!error.response) {
-      toast.error('Network error. Please check your connection.');
+    const isWakingUp = error.code === 'ECONNABORTED' || !error.response || [502, 503, 504].includes(error.response?.status);
+    
+    if (isWakingUp) {
+      error.isWakingUp = true;
+      toast.error('Server is waking up. Please wait 30 seconds and try again.', { id: 'waking-up-toast' });
     } else if (error.response.status === 401) {
       localStorage.removeItem('token');
       // If we are not on login page, redirect and notify

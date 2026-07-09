@@ -21,7 +21,7 @@ const MyBookings = () => {
       try {
         const endpoint = user.role === 'worker' ? `/bookings/worker/${user._id}` : `/bookings/customer/${user._id}`;
         const res = await api.get(endpoint);
-        setBookings(res.data.data);
+        setBookings(res?.data?.data || []);
 
         // Fetch complaints to show status
         try {

@@ -18,7 +18,7 @@ const AreaLaunch = () => {
 
   useEffect(() => {
     api.get('/areas')
-      .then(res => setAreas(res.data.data))
+      .then(res => setAreas(res?.data?.data || []))
       .catch(err => console.error(err));
   }, []);
 

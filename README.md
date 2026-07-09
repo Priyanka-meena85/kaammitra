@@ -71,7 +71,7 @@ KaamMitra is a voice-first local services marketplace tailored for Indian/Bharat
 3. Create a `.env` file in the `frontend` directory:
    ```env
    VITE_API_URL=http://localhost:5000/api/v1
-   # Use https://your-backend.onrender.com/api/v1 in production
+   # Use https://kaammitra-1.onrender.com/api/v1 in production
    
    VITE_ENABLE_DEMO_DATA=false
    ```

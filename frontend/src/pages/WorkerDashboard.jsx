@@ -8,11 +8,13 @@ import EmptyState from '../components/EmptyState';
 
 const WorkerDashboard = () => {
   const navigate = useNavigate();
-  const { user, logout, loading } = useAuth();
+  const { user, logout, loading: authLoading } = useAuth();
   
   const [workerData, setWorkerData] = useState(null);
   const [bookings, setBookings] = useState([]);
   const [leads, setLeads] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [apiError, setApiError] = useState(null);
   const [isUpdating, setIsUpdating] = useState(false);
 
   useEffect(() => {
@@ -31,11 +33,13 @@ const WorkerDashboard = () => {
         // Demo fallback for leads since lead logic might not be fully seeded
         setLeads(leadsRes.data?.data || []);
       } catch (err) {
-        console.error('Failed to load dashboard data', err);
-        // Only show if network error
+        console.error('Failed to fetch dashboard data', err);
+        if (err.isWakingUp) setApiError('Server is waking up. Please wait 30 seconds and try again.');
         if(err.message === 'Network Error') {
             toast.error('Network error loading dashboard');
         }
+      } finally {
+        setLoading(false);
       }
     };
     fetchData();
@@ -67,7 +71,7 @@ const WorkerDashboard = () => {
       setIsUpdating(true);
       const newStatus = !workerData.isAvailable;
       const res = await api.patch(`/workers/${user._id}/availability`, { isAvailable: newStatus });
-      setWorkerData(res.data.data);
+      setWorkerData(res?.data?.data || null);
       toast.success(`Status updated to ${newStatus ? 'Available' : 'Busy'}`);
     } catch (err) {
       toast.error('Failed to update availability');
@@ -85,7 +89,7 @@ const WorkerDashboard = () => {
       data.emergencyAvailable = formData.get('emergencyAvailable') === 'on';
       
       const res = await api.patch(`/workers/${user._id}/working-hours`, data);
-      setWorkerData(res.data.data);
+      setWorkerData(res?.data?.data || null);
       toast.success('Working hours and settings saved');
     } catch(err) {
       toast.error('Failed to save settings');
@@ -94,8 +98,20 @@ const WorkerDashboard = () => {
     }
   };
 
-  if (loading) return <div className="p-8 text-center">Loading...</div>;
-  if (!user || !workerData) return <div className="p-8 text-center text-red-500">Could not load worker profile. Please login again.</div>;
+  if (loading) return <div className="text-center py-20 text-text-gray font-medium">Loading dashboard...</div>;
+  if (apiError) return (
+    <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="bg-orange-50 rounded-3xl shadow-sm border border-orange-200 p-12 text-center">
+        <AlertTriangle size={64} className="mx-auto text-orange-400 mb-4" />
+        <h2 className="text-2xl font-bold text-orange-900 mb-2">{apiError}</h2>
+        <p className="text-orange-700 mb-6">Render's free tier sleeps after 15 minutes of inactivity. It takes a moment to spin back up.</p>
+        <button onClick={() => window.location.reload()} className="bg-orange-500 hover:bg-orange-600 text-white px-8 py-3 rounded-xl font-bold transition-colors shadow-md">
+          Try Again
+        </button>
+      </div>
+    </div>
+  );
+  if (!workerData) return <div className="text-center py-20 text-red-500 font-bold">Worker data not found. Please contact support.</div>;
 
   const pendingBookings = bookings.filter(b => b.status === 'Pending');
   const activeBookings = bookings.filter(b => ['Accepted', 'On the Way', 'In Progress'].includes(b.status));

@@ -25,7 +25,7 @@ export const AuthProvider = ({ children }) => {
                 setUser({ id: 'demo123', name: 'Demo User', role: 'customer' });
             } else {
                 const res = await api.get('/auth/me');
-                setUser(res.data.data);
+                setUser(res?.data?.data || null);
             }
         } catch (error) {
             console.error('Error fetching user', error);

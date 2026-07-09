@@ -22,6 +22,7 @@ const Workers = () => {
   const [allWorkers, setAllWorkers] = useState([]);
   const [filteredWorkers, setFilteredWorkers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [apiError, setApiError] = useState(null);
   
   // Filters
   const [distanceFilter, setDistanceFilter] = useState('all'); // all, 5, 15
@@ -36,9 +37,10 @@ const Workers = () => {
     const fetchAreas = async () => {
       try {
         const res = await api.get('/areas');
-        setAreas(res.data.data);
+        setAreas(res?.data?.data || []);
       } catch (err) {
         console.error('Failed to fetch areas', err);
+        setAreas([]);
       }
     };
     fetchAreas();
@@ -50,8 +52,9 @@ const Workers = () => {
         const cityParam = searchParams.get('city');
         const url = (cityParam && cityParam !== 'All Cities') ? `/workers?city=${cityParam}` : '/workers';
         const res = await api.get(url);
-        if (res.data.data.length > 0) {
-          setAllWorkers(res.data.data);
+        const workersData = res?.data?.data || [];
+        if (workersData.length > 0) {
+          setAllWorkers(workersData);
         } else {
           // If no workers from API, check demo mode
           if (import.meta.env.DEV && import.meta.env.VITE_ENABLE_DEMO_DATA === 'true') {
@@ -68,7 +71,11 @@ const Workers = () => {
           toast('Demo data shown because development fallback is enabled.', { icon: 'ℹ️' });
         } else {
           setAllWorkers([]);
-          toast.error('Unable to load workers. Please try again.');
+          if (err.isWakingUp) {
+            setApiError('Server is waking up. Please wait 30 seconds and try again.');
+          } else {
+            toast.error('Unable to load workers. Please try again.');
+          }
         }
       } finally {
         setLoading(false);
@@ -258,6 +265,15 @@ const Workers = () => {
         <div className="w-full lg:w-3/4">
           {loading ? (
             <div className="text-center py-20 text-text-gray font-medium">Loading workers...</div>
+          ) : apiError ? (
+            <div className="bg-orange-50 rounded-3xl shadow-sm border border-orange-200 p-12 text-center">
+              <AlertTriangle size={64} className="mx-auto text-orange-400 mb-4" />
+              <h2 className="text-2xl font-bold text-orange-900 mb-2">{apiError}</h2>
+              <p className="text-orange-700 mb-6">Render's free tier sleeps after 15 minutes of inactivity. It takes a moment to spin back up.</p>
+              <button onClick={() => window.location.reload()} className="bg-orange-500 hover:bg-orange-600 text-white px-8 py-3 rounded-xl font-bold transition-colors shadow-md">
+                Try Again
+              </button>
+            </div>
           ) : filteredWorkers.length === 0 ? (
             <div className="bg-card-white rounded-3xl shadow-sm border border-border-gray p-12 text-center">
               <Search size={64} className="mx-auto text-border-gray mb-4" />

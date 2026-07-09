@@ -82,7 +82,7 @@ const WorkerRegister = () => {
         toast('Development Mode: Use OTP ' + res.data.demoOtp, { icon: '🛠️' });
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || err.response?.data?.error || 'Failed to send OTP');
+      if (!err.isWakingUp) toast.error(err.response?.data?.message || err.response?.data?.error || 'Failed to send OTP');
     }
   };
 
@@ -94,7 +94,7 @@ const WorkerRegister = () => {
       toast.success('Phone verified successfully');
       setStep(2);
     } catch (err) {
-      toast.error(err.response?.data?.message || err.response?.data?.error || 'Invalid OTP');
+      if (!err.isWakingUp) toast.error(err.response?.data?.message || err.response?.data?.error || 'Invalid OTP');
     }
   };
 
@@ -128,7 +128,7 @@ const WorkerRegister = () => {
       toast.success('Worker profile submitted for verification');
       navigate('/worker-dashboard');
     } catch(err) {
-      toast.error(err.response?.data?.message || err.response?.data?.error || 'Registration failed');
+      if (!err.isWakingUp) toast.error(err.response?.data?.message || err.response?.data?.error || 'Registration failed');
     }
   };
 

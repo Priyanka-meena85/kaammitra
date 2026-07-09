@@ -19,13 +19,14 @@ const WorkerProfile = () => {
   const [worker, setWorker] = useState(null);
   const [ratings, setRatings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [apiError, setApiError] = useState(null);
   const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchWorker = async () => {
       try {
         const res = await api.get(`/workers/${id}`);
-        setWorker(res.data.data);
+        setWorker(res?.data?.data || null);
         
         // Fetch ratings if possible
         try {
@@ -47,8 +48,12 @@ const WorkerProfile = () => {
             navigate('/workers');
           }
         } else {
-          toast.error('Worker not found');
-          navigate('/workers');
+          if (err.isWakingUp) {
+            setApiError('Server is waking up. Please wait 30 seconds and try again.');
+          } else {
+            toast.error('Worker not found');
+            navigate('/workers');
+          }
         }
       } finally {
         setLoading(false);
@@ -58,6 +63,18 @@ const WorkerProfile = () => {
   }, [id, navigate]);
 
   if (loading) return <div className="text-center py-20 text-text-gray font-medium">Loading profile...</div>;
+  if (apiError) return (
+    <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="bg-orange-50 rounded-3xl shadow-sm border border-orange-200 p-12 text-center">
+        <AlertTriangle size={64} className="mx-auto text-orange-400 mb-4" />
+        <h2 className="text-2xl font-bold text-orange-900 mb-2">{apiError}</h2>
+        <p className="text-orange-700 mb-6">Render's free tier sleeps after 15 minutes of inactivity. It takes a moment to spin back up.</p>
+        <button onClick={() => window.location.reload()} className="bg-orange-500 hover:bg-orange-600 text-white px-8 py-3 rounded-xl font-bold transition-colors shadow-md">
+          Try Again
+        </button>
+      </div>
+    </div>
+  );
   if (!worker) return null;
 
   // Normalize fields

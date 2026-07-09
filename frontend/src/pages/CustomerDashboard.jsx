@@ -1,13 +1,28 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, List, AlertTriangle, User } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const CustomerDashboard = () => {
   const navigate = useNavigate();
-  const { user, logout, loading } = useAuth();
+  const { user, logout, loading: authLoading } = useAuth();
+  const [stats, setStats] = useState({ totalBookings: 0, pending: 0, active: 0 });
+  const [loading, setLoading] = useState(false);
+  const [apiError, setApiError] = useState(null);
 
-  if (loading || !user) return <div className="p-8 text-center">Loading...</div>;
+  if (loading) return <div className="text-center py-20 text-text-gray font-medium">Loading dashboard...</div>;
+  if (apiError) return (
+    <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="bg-orange-50 rounded-3xl shadow-sm border border-orange-200 p-12 text-center">
+        <AlertTriangle size={64} className="mx-auto text-orange-400 mb-4" />
+        <h2 className="text-2xl font-bold text-orange-900 mb-2">{apiError}</h2>
+        <p className="text-orange-700 mb-6">Render's free tier sleeps after 15 minutes of inactivity. It takes a moment to spin back up.</p>
+        <button onClick={() => window.location.reload()} className="bg-orange-500 hover:bg-orange-600 text-white px-8 py-3 rounded-xl font-bold transition-colors shadow-md">
+          Try Again
+        </button>
+      </div>
+    </div>
+  );
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
