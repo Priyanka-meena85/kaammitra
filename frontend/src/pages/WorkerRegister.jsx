@@ -227,7 +227,7 @@ const WorkerRegister = () => {
                   <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 text-border-gray" size={20} />
                   <select required value={formData.serviceCategory} onChange={e => setFormData({...formData, serviceCategory: e.target.value})} className="w-full pl-10 pr-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500 focus:outline-none bg-card-white appearance-none">
                     <option value="">Select Service...</option>
-                    {services.map(s => (
+                    {(Array.isArray(services) ? services : []).map(s => (
                       <option key={s.id} value={s.id}>{s.name} ({s.hindiName})</option>
                     ))}
                   </select>

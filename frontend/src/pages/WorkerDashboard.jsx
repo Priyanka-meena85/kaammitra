@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
 import EmptyState from '../components/EmptyState';
+import { extractArray } from '../utils/apiResponse';
 
 const WorkerDashboard = () => {
   const navigate = useNavigate();
@@ -28,10 +29,10 @@ const WorkerDashboard = () => {
         ]);
         
         setWorkerData(workerRes.data.data);
-        setBookings(bookingsRes.data.data);
+        setBookings(extractArray(bookingsRes, ["bookings"]));
         
         // Demo fallback for leads since lead logic might not be fully seeded
-        setLeads(leadsRes.data?.data || []);
+        setLeads(extractArray(leadsRes, ["leads"]));
       } catch (err) {
         console.error('Failed to fetch dashboard data', err);
         if (err.isWakingUp) setApiError('Server is waking up. Please wait 30 seconds and try again.');
@@ -113,11 +114,11 @@ const WorkerDashboard = () => {
   );
   if (!workerData) return <div className="text-center py-20 text-red-500 font-bold">Worker data not found. Please contact support.</div>;
 
-  const pendingBookings = bookings.filter(b => b.status === 'Pending');
-  const activeBookings = bookings.filter(b => ['Accepted', 'On the Way', 'In Progress'].includes(b.status));
-  const completedJobs = bookings.filter(b => b.status === 'Completed').length;
+  const pendingBookings = (Array.isArray(bookings) ? bookings : []).filter(b => b.status === 'Pending');
+  const activeBookings = (Array.isArray(bookings) ? bookings : []).filter(b => ['Accepted', 'On the Way', 'In Progress'].includes(b.status));
+  const completedJobs = (Array.isArray(bookings) ? bookings : []).filter(b => b.status === 'Completed').length;
   
-  const newLeads = leads.filter(l => l.status === 'New');
+  const newLeads = (Array.isArray(leads) ? leads : []).filter(l => l.status === 'New');
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
@@ -131,7 +132,7 @@ const WorkerDashboard = () => {
             </div>
             <div>
               <h1 className="text-2xl font-bold">{workerData.name}</h1>
-              <p className="text-blue-200">{workerData.services?.join(', ')}</p>
+              <p className="text-blue-200">{(Array.isArray(workerData.services) ? workerData.services : []).join(', ')}</p>
             </div>
           </div>
           

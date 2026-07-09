@@ -6,6 +6,7 @@ import StatusTimeline from '../components/StatusTimeline';
 import ComplaintModal from '../components/ComplaintModal';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
+import { extractArray } from '../utils/apiResponse';
 
 const MyBookings = () => {
   const [bookings, setBookings] = useState([]);
@@ -21,12 +22,12 @@ const MyBookings = () => {
       try {
         const endpoint = user.role === 'worker' ? `/bookings/worker/${user._id}` : `/bookings/customer/${user._id}`;
         const res = await api.get(endpoint);
-        setBookings(res?.data?.data || []);
+        setBookings(extractArray(res, ["bookings"]));
 
         // Fetch complaints to show status
         try {
           const compRes = await api.get('/complaints/my'); 
-          setComplaints(compRes.data.data);
+          setComplaints(extractArray(compRes, ["complaints"]));
         } catch (e) {
           console.warn('Could not fetch complaints', e);
         }
@@ -63,7 +64,7 @@ const MyBookings = () => {
     <div className="max-w-4xl mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold text-navy mb-8">My Bookings</h1>
       
-      {bookings.length === 0 ? (
+      {(Array.isArray(bookings) ? bookings : []).length === 0 ? (
         <div className="bg-card-white rounded-3xl shadow-sm border border-border-gray p-12 text-center">
           <Calendar size={64} className="mx-auto text-border-gray mb-4" />
           <h2 className="text-2xl font-bold text-navy mb-2">No Bookings Yet</h2>
@@ -74,7 +75,7 @@ const MyBookings = () => {
         </div>
       ) : (
         <div className="space-y-6">
-          {bookings.map(booking => (
+          {(Array.isArray(bookings) ? bookings : []).map(booking => (
             <div key={booking._id} className="bg-card-white rounded-2xl shadow-sm border border-border-gray p-6 flex flex-col md:flex-row justify-between gap-6">
               
               <div className="flex-1">
@@ -134,7 +135,7 @@ const MyBookings = () => {
                 )}
                 
                 {(() => {
-                  const bookingComplaint = complaints.find(c => String(c.bookingId) === String(booking._id) || (c.booking && String(c.booking._id) === String(booking._id)));
+                  const bookingComplaint = (Array.isArray(complaints) ? complaints : []).find(c => String(c.bookingId) === String(booking._id) || (c.booking && String(c.booking._id) === String(booking._id)));
                   if (bookingComplaint) {
                     return (
                       <div className={`w-full flex justify-center items-center gap-2 py-2 rounded-lg font-medium mt-2 text-sm ${bookingComplaint.status === 'Resolved' ? 'bg-green-50 text-green-700' : 'bg-orange-50 text-orange-700'}`}>

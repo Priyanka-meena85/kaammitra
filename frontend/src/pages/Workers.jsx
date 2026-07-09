@@ -9,6 +9,7 @@ import toast from 'react-hot-toast';
 import EmptyState from '../components/EmptyState';
 import { calculateMatchingScore } from '../utils/matchingScore';
 import { useSimpleMode } from '../context/SimpleModeContext';
+import { extractArray } from '../utils/apiResponse';
 
 const Workers = () => {
   const [searchParams] = useSearchParams();
@@ -37,7 +38,7 @@ const Workers = () => {
     const fetchAreas = async () => {
       try {
         const res = await api.get('/areas');
-        setAreas(res?.data?.data || []);
+        setAreas(extractArray(res));
       } catch (err) {
         console.error('Failed to fetch areas', err);
         setAreas([]);
@@ -52,7 +53,7 @@ const Workers = () => {
         const cityParam = searchParams.get('city');
         const url = (cityParam && cityParam !== 'All Cities') ? `/workers?city=${cityParam}` : '/workers';
         const res = await api.get(url);
-        const workersData = res?.data?.data || [];
+        const workersData = extractArray(res, ["workers"]);
         if (workersData.length > 0) {
           setAllWorkers(workersData);
         } else {
@@ -135,7 +136,7 @@ const Workers = () => {
         <h1 className="text-3xl font-bold text-navy mb-2">
           {selectedService ? `Workers for ${selectedService}` : 'Find Workers near you'}
         </h1>
-        <p className="text-text-gray">Showing {filteredWorkers.length} workers based on your criteria.</p>
+        <p className="text-text-gray">Showing {(Array.isArray(filteredWorkers) ? filteredWorkers : []).length} workers based on your criteria.</p>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-8">
@@ -181,7 +182,7 @@ const Workers = () => {
                       className="w-full p-2 rounded-lg border border-border-gray focus:ring-2 focus:ring-primary focus:outline-none"
                     >
                       <option value="All">All Areas</option>
-                      {[...new Set(areas.map(a => a.city))].map(city => (
+                      {[...new Set((Array.isArray(areas) ? areas : []).map(a => a.city))].map(city => (
                         <option key={city} value={city}>{city}</option>
                       ))}
                     </select>
@@ -201,7 +202,7 @@ const Workers = () => {
                   className={`w-full rounded-lg border border-border-gray focus:ring-2 focus:ring-primary focus:outline-none ${isSimpleMode ? 'p-4 text-lg font-bold' : 'p-2'}`}
                 >
                   <option value="">All Services</option>
-                  {services.map(s => (
+                  {(Array.isArray(services) ? services : []).map(s => (
                     <option key={s.id} value={s.name}>{s.name} ({s.hindiName})</option>
                   ))}
                 </select>
@@ -290,7 +291,7 @@ const Workers = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {filteredWorkers.map((worker, index) => (
+              {(Array.isArray(filteredWorkers) ? filteredWorkers : []).map((worker, index) => (
                 <WorkerCard key={worker._id || worker.id || index} worker={worker} />
               ))}
             </div>

@@ -10,6 +10,7 @@ import { workers as dummyWorkers } from '../data/workers';
 import { getUserLocation } from '../utils/location';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
+import { extractArray } from '../utils/apiResponse';
 
 const Home = () => {
   const navigate = useNavigate();
@@ -26,7 +27,7 @@ const Home = () => {
     const fetchAreas = async () => {
       try {
         const res = await api.get('/areas');
-        setAreas(res?.data?.data || []);
+        setAreas(extractArray(res));
       } catch (err) {
         console.error('Failed to fetch areas', err);
         setAreas([]);
@@ -40,7 +41,7 @@ const Home = () => {
       try {
         const url = selectedCity ? `/workers?limit=4&city=${selectedCity}` : '/workers?limit=4';
         const res = await api.get(url);
-        const workersData = res?.data?.data || [];
+        const workersData = extractArray(res, ["workers"]);
         if (workersData.length > 0) {
           setTopWorkers(workersData.slice(0, 4));
         } else {
@@ -117,7 +118,7 @@ const Home = () => {
                   className="w-full px-4 py-3 rounded-xl border border-border-gray shadow-sm focus:ring-2 focus:ring-primary focus:outline-none appearance-none bg-white text-lg font-medium text-navy"
                 >
                   <option value="">All Cities</option>
-                  {[...new Set(areas.map(a => a.city))].map(city => (
+                  {[...new Set((Array.isArray(areas) ? areas : []).map(a => a.city))].map(city => (
                     <option key={city} value={city}>{city}</option>
                   ))}
                   <option value="Other">Other City...</option>
@@ -199,7 +200,7 @@ const Home = () => {
           </div>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {services.map(service => (
+            {(Array.isArray(services) ? services : []).map(service => (
               <ServiceCard key={service.id} service={service} />
             ))}
           </div>
@@ -254,10 +255,12 @@ const Home = () => {
                 <AlertTriangle size={20} />
                 {apiError}
               </div>
-            ) : topWorkers.length === 0 ? (
-              <div className="col-span-2 text-center text-text-gray py-4">No workers available.</div>
+            ) : (Array.isArray(topWorkers) ? topWorkers : []).length === 0 ? (
+              <div className="lg:col-span-2 bg-card-white p-8 rounded-2xl border border-border-gray text-center text-text-gray">
+                No workers found in this area yet. Be the first to register!
+              </div>
             ) : (
-              topWorkers.map((worker, index) => (
+              (Array.isArray(topWorkers) ? topWorkers : []).map((worker, index) => (
                 <WorkerCard key={worker._id || worker.id || index} worker={worker} />
               ))
             )}

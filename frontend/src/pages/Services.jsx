@@ -116,7 +116,7 @@ const Services = () => {
         
         {/* 5. Category Filters */}
         <div className="flex overflow-x-auto gap-3 pb-4 mb-8 scrollbar-hide">
-          {categories.map(cat => (
+          {(Array.isArray(categories) ? categories : []).map(cat => (
             <button
               key={cat}
               onClick={() => setActiveCategory(cat)}
@@ -132,7 +132,7 @@ const Services = () => {
         </div>
 
         {/* 4. Service Cards Grid */}
-        {filteredServices.length === 0 ? (
+        {(Array.isArray(filteredServices) ? filteredServices : []).length === 0 ? (
           <div className="text-center py-20 bg-card-white rounded-3xl border border-border-gray">
             <Search size={48} className="mx-auto text-gray-300 mb-4" />
             <h3 className="text-2xl font-bold text-navy mb-2">No services found</h3>
@@ -146,7 +146,7 @@ const Services = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredServices.map(service => (
+            {(Array.isArray(filteredServices) ? filteredServices : []).map(service => (
               <ServiceCard key={service.id} service={service} />
             ))}
           </div>

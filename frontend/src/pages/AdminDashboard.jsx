@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
 import EmptyState from '../components/EmptyState';
+import { extractArray } from '../utils/apiResponse';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -41,11 +42,11 @@ const AdminDashboard = () => {
            api.get('/admin/bookings')
         ]);
         
-        setPendingWorkers(workersRes.data.data.filter(w => w.verificationStatus === 'Pending Verification' || !w.isVerified));
-        setCallbacks(callbacksRes.data.data);
-        setAreaRequests(areasRes.data.data);
-        setComplaints(complaintsRes.data.data);
-        setBookings(bookingsRes.data.data);
+        setPendingWorkers(extractArray(workersRes, ["workers"]).filter(w => w.verificationStatus === 'Pending Verification' || !w.isVerified));
+        setCallbacks(extractArray(callbacksRes, ["callbacks"]));
+        setAreaRequests(extractArray(areasRes, ["areas"]));
+        setComplaints(extractArray(complaintsRes, ["complaints"]));
+        setBookings(extractArray(bookingsRes, ["bookings"]));
 
       } catch (err) {
         console.error('Failed to load admin data', err);
@@ -186,31 +187,31 @@ const AdminDashboard = () => {
                 onClick={() => setActiveTab('workers')} 
                 className={`px-6 py-4 font-bold text-sm md:text-base transition ${activeTab === 'workers' ? 'bg-white border-b-2 border-primary text-primary' : 'text-gray-500 hover:text-navy'}`}
             >
-                Pending Workers ({pendingWorkers.length})
+                Pending Workers ({(Array.isArray(pendingWorkers) ? pendingWorkers : []).length})
             </button>
             <button 
                 onClick={() => setActiveTab('complaints')} 
                 className={`px-6 py-4 font-bold text-sm md:text-base transition ${activeTab === 'complaints' ? 'bg-white border-b-2 border-primary text-primary' : 'text-gray-500 hover:text-navy'}`}
             >
-                Complaints ({complaints.filter(c => c.status !== 'Resolved').length})
+                Complaints ({(Array.isArray(complaints) ? complaints : []).filter(c => c.status !== 'Resolved').length})
             </button>
             <button 
                 onClick={() => setActiveTab('bookings')} 
                 className={`px-6 py-4 font-bold text-sm md:text-base transition ${activeTab === 'bookings' ? 'bg-white border-b-2 border-primary text-primary' : 'text-gray-500 hover:text-navy'}`}
             >
-                Bookings ({bookings.length})
+                Bookings ({(Array.isArray(bookings) ? bookings : []).length})
             </button>
             <button 
                 onClick={() => setActiveTab('callbacks')} 
                 className={`px-6 py-4 font-bold text-sm md:text-base transition ${activeTab === 'callbacks' ? 'bg-white border-b-2 border-primary text-primary' : 'text-gray-500 hover:text-navy'}`}
             >
-                Callback Requests ({callbacks.length})
+                Callback Requests ({(Array.isArray(callbacks) ? callbacks : []).length})
             </button>
             <button 
                 onClick={() => setActiveTab('areas')} 
                 className={`px-6 py-4 font-bold text-sm md:text-base transition ${activeTab === 'areas' ? 'bg-white border-b-2 border-primary text-primary' : 'text-gray-500 hover:text-navy'}`}
             >
-                Area Launches ({areaRequests.length})
+                Area Launches ({(Array.isArray(areaRequests) ? areaRequests : []).length})
             </button>
         </div>
 
@@ -230,12 +231,12 @@ const AdminDashboard = () => {
                         </tr>
                         </thead>
                         <tbody>
-                        {pendingWorkers.length === 0 && (
+                        {(Array.isArray(pendingWorkers) ? pendingWorkers : []).length === 0 && (
                             <tr><td colSpan="4" className="p-8 text-center text-text-gray">
                                 <EmptyState message="No pending worker verifications." />
                             </td></tr>
                         )}
-                        {pendingWorkers.map(worker => (
+                        {(Array.isArray(pendingWorkers) ? pendingWorkers : []).map(worker => (
                             <tr key={worker._id} className="border-b border-border-gray hover:bg-gray-50">
                                 <td className="p-4">
                                     <p className="font-bold text-navy">{worker.name}</p>
@@ -267,8 +268,8 @@ const AdminDashboard = () => {
             {/* Complaints Tab */}
             {activeTab === 'complaints' && (
                 <div className="space-y-4">
-                    {complaints.length === 0 && <EmptyState message="No complaints found." />}
-                    {complaints.map(c => (
+                    {(Array.isArray(complaints) ? complaints : []).length === 0 && <EmptyState message="No complaints found." />}
+                    {(Array.isArray(complaints) ? complaints : []).map(c => (
                         <div key={c._id} className="flex flex-col md:flex-row justify-between items-center p-4 border border-border-gray rounded-xl bg-gray-50">
                             <div>
                                 <p className="font-bold text-navy">Type: {c.complaintType}</p>
@@ -287,8 +288,8 @@ const AdminDashboard = () => {
             {/* Bookings Tab */}
             {activeTab === 'bookings' && (
                 <div className="space-y-4">
-                    {bookings.length === 0 && <EmptyState message="No bookings found." />}
-                    {bookings.map(b => (
+                    {(Array.isArray(bookings) ? bookings : []).length === 0 && <EmptyState message="No bookings found." />}
+                    {(Array.isArray(bookings) ? bookings : []).map(b => (
                         <div key={b._id} className="flex flex-col md:flex-row justify-between items-center p-4 border border-border-gray rounded-xl bg-gray-50">
                             <div>
                                 <p className="font-bold text-navy">Service: {b.service || b.serviceId?.name}</p>
@@ -304,8 +305,8 @@ const AdminDashboard = () => {
             {/* Callbacks Tab */}
             {activeTab === 'callbacks' && (
                 <div className="space-y-4">
-                    {callbacks.length === 0 && <EmptyState message="No callback requests." />}
-                    {callbacks.map(c => (
+                    {(Array.isArray(callbacks) ? callbacks : []).length === 0 && <EmptyState message="No callback requests." />}
+                    {(Array.isArray(callbacks) ? callbacks : []).map(c => (
                         <div key={c._id} className="flex flex-col md:flex-row justify-between items-center p-4 border border-border-gray rounded-xl bg-gray-50">
                             <div>
                                 <p className="font-bold text-navy flex items-center gap-2"><PhoneCall size={16}/> {c.name} - {c.phone}</p>
@@ -325,8 +326,8 @@ const AdminDashboard = () => {
             {/* Areas Tab */}
             {activeTab === 'areas' && (
                 <div className="space-y-4">
-                    {areaRequests.length === 0 && <EmptyState message="No area launch requests." />}
-                    {areaRequests.map(a => (
+                    {(Array.isArray(areaRequests) ? areaRequests : []).length === 0 && <EmptyState message="No area launch requests." />}
+                    {(Array.isArray(areaRequests) ? areaRequests : []).map(a => (
                         <div key={a._id} className="flex flex-col md:flex-row justify-between items-center p-4 border border-border-gray rounded-xl bg-gray-50">
                             <div>
                                 <p className="font-bold text-navy flex items-center gap-2"><MapPin size={16}/> Requested City: {a.city} | Area: {a.area}</p>

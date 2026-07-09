@@ -9,6 +9,7 @@ import { useAuth } from '../context/AuthContext';
 import { useSimpleMode } from '../context/SimpleModeContext';
 import { speakText } from '../utils/speech';
 import { Volume2 } from 'lucide-react';
+import { extractObject, extractArray } from '../utils/apiResponse';
 
 const WorkerProfile = () => {
   const { id } = useParams();
@@ -26,12 +27,12 @@ const WorkerProfile = () => {
     const fetchWorker = async () => {
       try {
         const res = await api.get(`/workers/${id}`);
-        setWorker(res?.data?.data || null);
+        setWorker(extractObject(res, ["worker"]));
         
         // Fetch ratings if possible
         try {
             const ratingRes = await api.get(`/ratings/worker/${id}`);
-            setRatings(ratingRes.data.data || []);
+            setRatings(extractArray(ratingRes, ["ratings"]));
         } catch(e) {
             console.log('No ratings found or error fetching ratings');
         }
@@ -78,13 +79,13 @@ const WorkerProfile = () => {
   if (!worker) return null;
 
   // Normalize fields
-  const name = worker.name || 'Worker Name';
-  const service = worker.service || (worker.services && worker.services[0]) || 'Service';
-  const isVerified = worker.isVerified || worker.verificationStatus === 'Verified';
-  const isAvailable = worker.isAvailable !== undefined ? worker.isAvailable : true;
-  const price = worker.expectedCharge || worker.startingPrice || 0;
-  const rating = worker.averageRating || worker.rating || 0;
-  const jobs = worker.completedJobs || worker.jobs || 0;
+  const name = worker?.name || 'Worker Name';
+  const service = worker?.service || (worker?.services && worker.services[0]) || 'Service';
+  const isVerified = worker?.isVerified || worker?.verificationStatus === 'Verified';
+  const isAvailable = worker?.isAvailable !== undefined ? worker.isAvailable : true;
+  const price = worker?.expectedCharge || worker?.startingPrice || 0;
+  const rating = worker?.averageRating || worker?.rating || 0;
+  const jobs = worker?.completedJobs || worker?.jobs || 0;
   
   
   const handleCallWorker = async () => {
@@ -171,15 +172,15 @@ const WorkerProfile = () => {
                     <div>
                         <h2 className="text-xl font-bold text-navy mb-4">About Me</h2>
                         <p className="text-text-gray leading-relaxed">
-                            {worker.bio || `Hi, I am ${name}. I have ${worker.experience || 'several'} years of experience working as a ${service}. I provide high quality service with full satisfaction guarantee.`}
+                            {worker?.bio || `Hi, I am ${name}. I have ${worker?.experience || 'several'} years of experience working as a ${service}. I provide high quality service with full satisfaction guarantee.`}
                         </p>
                     </div>
 
-                    {!isSimpleMode && worker.skills && worker.skills.length > 0 && (
+                    {!isSimpleMode && (Array.isArray(worker?.skills) ? worker.skills : []).length > 0 && (
                         <div>
                             <h2 className="text-xl font-bold text-navy mb-4">Skills & Expertise</h2>
                             <div className="flex flex-wrap gap-2">
-                                {worker.skills.map(skill => (
+                                {(Array.isArray(worker?.skills) ? worker.skills : []).map(skill => (
                                     <span key={skill} className="bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-sm font-medium">{skill}</span>
                                 ))}
                             </div>
@@ -217,20 +218,20 @@ const WorkerProfile = () => {
                             <h2 className="text-xl font-bold text-navy">Customer Reviews</h2>
                             <button onClick={() => setIsRatingModalOpen(true)} className="text-primary font-bold hover:underline">Write a Review</button>
                         </div>
-                        {ratings.length === 0 ? (
+                        {(Array.isArray(ratings) ? ratings : []).length === 0 ? (
                             <div className="text-center py-8 bg-gray-50 rounded-2xl border border-dashed border-gray-300">
                                 <Star size={32} className="mx-auto text-gray-400 mb-2" />
                                 <p className="text-gray-500">No reviews yet. Be the first to rate {name}!</p>
                             </div>
                         ) : (
                             <div className="space-y-4">
-                                {ratings.map((r, i) => (
+                                {(Array.isArray(ratings) ? ratings : []).map((r, i) => (
                                     <div key={i} className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
                                         <div className="flex items-center justify-between mb-2">
-                                            <span className="font-bold text-navy">{r.customerId?.name || 'Customer'}</span>
-                                            <span className="flex items-center gap-1 text-sm font-bold text-yellow-600"><Star size={14} className="fill-yellow-500" /> {r.rating}</span>
+                                            <span className="font-bold text-navy">{r?.customerId?.name || 'Customer'}</span>
+                                            <span className="flex items-center gap-1 text-sm font-bold text-yellow-600"><Star size={14} className="fill-yellow-500" /> {r?.rating}</span>
                                         </div>
-                                        {r.review && <p className="text-gray-600 text-sm">{r.review}</p>}
+                                        {r?.review && <p className="text-gray-600 text-sm">{r.review}</p>}
                                     </div>
                                 ))}
                             </div>
