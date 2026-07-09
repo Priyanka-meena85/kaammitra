@@ -24,7 +24,7 @@ const Navbar = () => {
             <Link to="/" className="text-text-gray hover:text-primary font-medium">{lang === 'hi' ? 'होम' : 'Home'}</Link>
             <Link to="/services" className="text-text-gray hover:text-primary font-medium">{lang === 'hi' ? 'सर्विसेज' : 'Services'}</Link>
             <Link to="/how-it-works" className="text-text-gray hover:text-primary font-medium">{lang === 'hi' ? 'कैसे काम करता है' : 'How it Works'}</Link>
-            <Link to="/worker-register" className="text-text-gray hover:text-primary font-medium">{lang === 'hi' ? 'वर्कर बनें' : 'Become Worker'}</Link>
+            <Link to="/worker-onboarding" className="text-text-gray hover:text-primary font-medium">{lang === 'hi' ? 'वर्कर बनें' : 'Become Worker'}</Link>
             
             <SimpleModeToggle />
 
@@ -64,7 +64,7 @@ const Navbar = () => {
             <Link to="/" onClick={() => setIsOpen(false)} className="block px-3 py-2 text-text-gray font-medium hover:bg-bg-warm rounded-md">Home</Link>
             <Link to="/services" onClick={() => setIsOpen(false)} className="block px-3 py-2 text-text-gray font-medium hover:bg-bg-warm rounded-md">Services</Link>
             <Link to="/how-it-works" onClick={() => setIsOpen(false)} className="block px-3 py-2 text-text-gray font-medium hover:bg-bg-warm rounded-md">How it Works</Link>
-            <Link to="/worker-register" onClick={() => setIsOpen(false)} className="block px-3 py-2 text-text-gray font-medium hover:bg-bg-warm rounded-md">Become Worker</Link>
+            <Link to="/worker-onboarding" onClick={() => setIsOpen(false)} className="block px-3 py-2 text-text-gray font-medium hover:bg-bg-warm rounded-md">Become Worker</Link>
             <Link to="/login" onClick={() => setIsOpen(false)} className="block px-3 py-2 text-text-gray font-medium hover:bg-bg-warm rounded-md">Login</Link>
             <Link to="/register" onClick={() => setIsOpen(false)} className="block px-3 py-2 text-orange-500 font-medium hover:bg-bg-warm rounded-md">Register</Link>
           </div>

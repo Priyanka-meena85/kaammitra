@@ -5,11 +5,14 @@ const Worker = require('../models/Worker');
 // @access  Public
 exports.getWorkers = async (req, res) => {
     try {
-        const { service, lng, lat, distance } = req.query;
-        let query = { isVerified: true, availability: true };
+        const { service, lng, lat, distance, city } = req.query;
+        let query = { isBlocked: false };
 
         if (service) {
             query.services = { $in: [service] };
+        }
+        if (city && city !== 'All Cities') {
+            query.city = city;
         }
 
         if (lng && lat && distance) {

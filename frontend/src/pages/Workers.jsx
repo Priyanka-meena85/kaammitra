@@ -47,7 +47,8 @@ const Workers = () => {
   useEffect(() => {
     const fetchWorkers = async () => {
       try {
-        const url = searchParams.get('city') ? `/workers?city=${searchParams.get('city')}` : '/workers';
+        const cityParam = searchParams.get('city');
+        const url = (cityParam && cityParam !== 'All Cities') ? `/workers?city=${cityParam}` : '/workers';
         const res = await api.get(url);
         if (res.data.data.length > 0) {
           setAllWorkers(res.data.data);

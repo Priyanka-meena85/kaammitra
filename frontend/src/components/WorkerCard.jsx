@@ -74,6 +74,11 @@ const WorkerCard = ({ worker }) => {
                 <ShieldCheck size={16} />
               </div>
             )}
+            {!isVerified && worker.verificationStatus === 'Pending Verification' && (
+              <div className="absolute -bottom-2 -right-2 bg-yellow-500 text-white p-1 rounded-full border-2 border-white shadow-sm" title="Pending Verification">
+                <Clock size={16} />
+              </div>
+            )}
           </div>
           <div className="flex-1 pt-1">
             <h3 className="text-xl font-bold text-navy group-hover:text-primary transition-colors">{name}</h3>
