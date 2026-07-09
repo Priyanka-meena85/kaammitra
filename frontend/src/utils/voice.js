@@ -21,7 +21,11 @@ export const startVoiceRecognition = (onResult, onError, lang = 'hi-IN') => {
     if (onError) onError(event.error);
   };
 
-  recognition.start();
+  try {
+    recognition.start();
+  } catch (error) {
+    if (onError) onError("Failed to start voice recognition. Please check microphone permissions.");
+  }
 };
 
 // Text to Speech Utility

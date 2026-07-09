@@ -4,6 +4,7 @@ import { Search, MapPin, AlertTriangle, ShieldCheck, Phone, Star, UserCheck, Mes
 import ServiceCard from '../components/ServiceCard';
 import { services } from '../data/services';
 import { getUserLocation } from '../utils/location';
+import toast from 'react-hot-toast';
 
 const Services = () => {
   const navigate = useNavigate();
@@ -16,9 +17,9 @@ const Services = () => {
     try {
       const loc = await getUserLocation();
       localStorage.setItem('user_location', JSON.stringify(loc));
-      alert('Location saved successfully. We will show results near you.');
+      toast.success('Location saved successfully. We will show results near you.');
     } catch(e) {
-      alert('Location access denied or failed.');
+      toast.error('Location access denied or failed.');
     }
   };
 

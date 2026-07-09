@@ -1,10 +1,11 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
-// A simple protected route component
-// For this frontend-first approach, we'll check localStorage for a mock user
 const ProtectedRoute = ({ children, roleRequired }) => {
-  const user = JSON.parse(localStorage.getItem('kaammitra_user') || 'null');
+  const { user, loading } = useAuth();
+
+  if (loading) return <div className="p-8 text-center">Loading...</div>;
 
   if (!user) {
     return <Navigate to="/login" replace />;

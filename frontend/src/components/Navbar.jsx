@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Menu, X, User, Languages } from 'lucide-react';
+import SimpleModeToggle from './SimpleModeToggle';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -26,6 +27,8 @@ const Navbar = () => {
             <Link to="/how-it-works" className="text-text-gray hover:text-primary font-medium">{lang === 'hi' ? 'कैसे काम करता है' : 'How it Works'}</Link>
             <Link to="/worker-register" className="text-text-gray hover:text-primary font-medium">{lang === 'hi' ? 'वर्कर बनें' : 'Become Worker'}</Link>
             
+            <SimpleModeToggle />
+
             <button onClick={toggleLang} className="flex items-center gap-1 text-text-gray hover:text-primary">
               <Languages size={20} />
               <span className="text-sm font-bold">{lang === 'en' ? 'HI' : 'EN'}</span>

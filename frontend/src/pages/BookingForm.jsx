@@ -1,48 +1,112 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Calendar, Clock, MapPin, Phone, CheckCircle2 } from 'lucide-react';
+import { Calendar, Clock, MapPin, Phone, CheckCircle2, Mic } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { workers } from '../data/workers';
+import { startVoiceRecognition } from '../utils/voice';
+import { useAuth } from '../context/AuthContext';
+import api from '../utils/api';
+import toast from 'react-hot-toast';
+
+const bookingSchema = z.object({
+  description: z.string().min(10, 'Problem description must be at least 10 characters'),
+  address: z.string().min(10, 'Please provide a complete address'),
+  date: z.string().min(1, 'Please select a date'),
+  time: z.string().min(1, 'Please select a time'),
+  contact: z.string().regex(/^[0-9]{10}$/, 'Contact must be exactly 10 digits'),
+  urgency: z.enum(['Normal', 'Urgent'])
+});
 
 const BookingForm = () => {
   const { workerId } = useParams();
   const navigate = useNavigate();
-  const worker = workers.find(w => w.id === workerId);
+  const [worker, setWorker] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [isListening, setIsListening] = useState(false);
 
-  const [formData, setFormData] = useState({
-    problem: '',
-    address: '',
-    date: '',
-    time: '',
-    urgency: 'Normal',
-    contact: ''
+  React.useEffect(() => {
+    if (!user) {
+      toast.error('Please login to book a service');
+      navigate('/login');
+      return;
+    }
+    const fetchWorker = async () => {
+      try {
+        const res = await api.get(`/workers/${workerId}`);
+        setWorker(res.data.data);
+      } catch (err) {
+        if (import.meta.env.DEV && import.meta.env.VITE_ENABLE_DEMO_DATA === 'true') {
+          const dummy = workers.find(w => w.id === parseInt(workerId) || w.id === workerId || w._id === workerId);
+          if (dummy) setWorker(dummy);
+        } else {
+          toast.error('Worker not found');
+          navigate('/workers');
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchWorker();
+  }, [workerId, user, navigate]);
+
+  const { register, handleSubmit, setValue, getValues, formState: { errors } } = useForm({
+    resolver: zodResolver(bookingSchema),
+    defaultValues: {
+      urgency: 'Normal'
+    }
   });
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+  const handleVoiceInput = () => {
+    setIsListening(true);
+    startVoiceRecognition(
+      (text) => {
+        const currentProblem = getValues('description') || '';
+        setValue('description', currentProblem ? currentProblem + ' ' + text : text, { shouldValidate: true });
+        setIsListening(false);
+      },
+      (error) => {
+        toast.error(error);
+        setIsListening(false);
+      }
+    );
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
+  const onSubmit = async (data) => {
+    if (!user) {
+      toast.error('Session expired. Please login again.');
+      navigate('/login');
+      return;
+    }
     
-    // Save to localStorage
-    const newBooking = {
-      id: `BKG-${Math.floor(Math.random() * 10000)}`,
-      workerId: worker.id,
-      workerName: worker.name,
-      service: worker.service,
-      status: 'Pending',
-      createdAt: new Date().toISOString(),
-      ...formData
-    };
+    try {
+      const serviceId = worker.services && worker.services.length > 0 && worker.services[0]._id 
+        ? worker.services[0]._id 
+        : worker.services?.[0] || '60d0fe4f5311236168a109ca'; // Keep this fallback just in case backend fails on pure strings
 
-    const existingBookings = JSON.parse(localStorage.getItem('kaammitra_bookings') || '[]');
-    localStorage.setItem('kaammitra_bookings', JSON.stringify([newBooking, ...existingBookings]));
-
-    alert('Booking submitted successfully!');
-    navigate('/my-bookings');
+      const payload = {
+        customerId: user._id,
+        workerId: worker._id || worker.id,
+        serviceId: serviceId,
+        description: data.description,
+        address: data.address,
+        date: data.date,
+        time: data.time,
+        urgency: data.urgency,
+        contactNumber: data.contact
+      };
+      await api.post('/bookings', payload);
+      toast.success('Booking submitted successfully!');
+      navigate('/my-bookings');
+    } catch (err) {
+      toast.error('Failed to submit booking. Please try again.');
+      console.error(err);
+    }
   };
 
-  if (!worker) return <div>Worker not found</div>;
+  if (loading) return <div className="text-center py-20 text-text-gray font-medium">Loading booking details...</div>;
+  if (!worker) return <div className="text-center py-20 text-red-500 font-bold">Worker not found</div>;
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
@@ -52,18 +116,25 @@ const BookingForm = () => {
           <p className="text-text-gray">You are booking <span className="font-bold text-primary">{worker.name}</span> for <span className="font-bold text-primary">{worker.service}</span></p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <div>
-            <label className="block text-sm font-medium text-text-gray mb-2">Describe the problem</label>
+            <div className="flex justify-between items-center mb-2">
+              <label className="block text-sm font-medium text-text-gray">Describe the problem</label>
+              <button 
+                type="button" 
+                onClick={handleVoiceInput}
+                className={`flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full ${isListening ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-bg-soft-blue text-primary hover:bg-blue-200'}`}
+              >
+                <Mic size={14} /> {isListening ? 'Listening...' : 'Speak Problem'}
+              </button>
+            </div>
             <textarea
-              name="problem"
-              required
+              {...register('description')}
               rows="3"
-              value={formData.problem}
-              onChange={handleChange}
               placeholder="E.g., Fan is making noise, pipe is leaking..."
-              className="w-full p-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              className={`w-full p-3 rounded-xl border ${errors.description ? 'border-red-500' : 'border-border-gray'} focus:ring-2 focus:ring-blue-500 focus:outline-none`}
             ></textarea>
+            {errors.description && <p className="text-red-500 text-sm mt-1">{errors.description.message}</p>}
           </div>
 
           <div>
@@ -72,14 +143,12 @@ const BookingForm = () => {
               <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-border-gray" size={20} />
               <input
                 type="text"
-                name="address"
-                required
-                value={formData.address}
-                onChange={handleChange}
+                {...register('address')}
                 placeholder="Complete address (House no, Street, Landmark)"
-                className="w-full pl-10 pr-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                className={`w-full pl-10 pr-4 py-3 rounded-xl border ${errors.address ? 'border-red-500' : 'border-border-gray'} focus:ring-2 focus:ring-blue-500 focus:outline-none`}
               />
             </div>
+            {errors.address && <p className="text-red-500 text-sm mt-1">{errors.address.message}</p>}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -89,13 +158,11 @@ const BookingForm = () => {
                 <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-border-gray" size={20} />
                 <input
                   type="date"
-                  name="date"
-                  required
-                  value={formData.date}
-                  onChange={handleChange}
-                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  {...register('date')}
+                  className={`w-full pl-10 pr-4 py-3 rounded-xl border ${errors.date ? 'border-red-500' : 'border-border-gray'} focus:ring-2 focus:ring-blue-500 focus:outline-none`}
                 />
               </div>
+              {errors.date && <p className="text-red-500 text-sm mt-1">{errors.date.message}</p>}
             </div>
             <div>
               <label className="block text-sm font-medium text-text-gray mb-2">Preferred Time</label>
@@ -103,13 +170,11 @@ const BookingForm = () => {
                 <Clock className="absolute left-3 top-1/2 -translate-y-1/2 text-border-gray" size={20} />
                 <input
                   type="time"
-                  name="time"
-                  required
-                  value={formData.time}
-                  onChange={handleChange}
-                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  {...register('time')}
+                  className={`w-full pl-10 pr-4 py-3 rounded-xl border ${errors.time ? 'border-red-500' : 'border-border-gray'} focus:ring-2 focus:ring-blue-500 focus:outline-none`}
                 />
               </div>
+              {errors.time && <p className="text-red-500 text-sm mt-1">{errors.time.message}</p>}
             </div>
           </div>
 
@@ -119,14 +184,12 @@ const BookingForm = () => {
               <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-border-gray" size={20} />
               <input
                 type="tel"
-                name="contact"
-                required
-                value={formData.contact}
-                onChange={handleChange}
+                {...register('contact')}
                 placeholder="10-digit mobile number"
-                className="w-full pl-10 pr-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                className={`w-full pl-10 pr-4 py-3 rounded-xl border ${errors.contact ? 'border-red-500' : 'border-border-gray'} focus:ring-2 focus:ring-blue-500 focus:outline-none`}
               />
             </div>
+            {errors.contact && <p className="text-red-500 text-sm mt-1">{errors.contact.message}</p>}
           </div>
 
           <div>
@@ -135,10 +198,8 @@ const BookingForm = () => {
               <label className="flex-1 cursor-pointer">
                 <input 
                   type="radio" 
-                  name="urgency" 
                   value="Normal" 
-                  checked={formData.urgency === 'Normal'} 
-                  onChange={handleChange} 
+                  {...register('urgency')}
                   className="peer hidden" 
                 />
                 <div className="border border-border-gray rounded-xl p-4 text-center peer-checked:bg-bg-soft-blue peer-checked:border-blue-500 peer-checked:text-primary-hover font-medium transition-all">
@@ -148,10 +209,8 @@ const BookingForm = () => {
               <label className="flex-1 cursor-pointer">
                 <input 
                   type="radio" 
-                  name="urgency" 
                   value="Urgent" 
-                  checked={formData.urgency === 'Urgent'} 
-                  onChange={handleChange} 
+                  {...register('urgency')}
                   className="peer hidden" 
                 />
                 <div className="border border-border-gray rounded-xl p-4 text-center peer-checked:bg-accent-orange/10 peer-checked:border-red-500 peer-checked:text-accent-orange-hover font-medium transition-all">
@@ -159,6 +218,7 @@ const BookingForm = () => {
                 </div>
               </label>
             </div>
+            {errors.urgency && <p className="text-red-500 text-sm mt-1">{errors.urgency.message}</p>}
           </div>
 
           <button 

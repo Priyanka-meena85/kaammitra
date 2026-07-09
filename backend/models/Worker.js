@@ -11,6 +11,12 @@ const WorkerSchema = new mongoose.Schema({
         required: [true, 'Please add a phone number'],
         unique: true
     },
+    whatsapp: {
+        type: String
+    },
+    email: {
+        type: String
+    },
     password: {
         type: String,
         required: [true, 'Please add a password'],
@@ -21,6 +27,9 @@ const WorkerSchema = new mongoose.Schema({
         type: [String],
         required: [true, 'Please specify at least one service category']
     },
+    skills: {
+        type: [String]
+    },
     experience: {
         type: String // e.g. "5 years"
     },
@@ -28,6 +37,12 @@ const WorkerSchema = new mongoose.Schema({
         type: Number // expected hourly or visit charge
     },
     address: {
+        type: String
+    },
+    city: {
+        type: String
+    },
+    area: {
         type: String
     },
     radius: {
@@ -45,14 +60,68 @@ const WorkerSchema = new mongoose.Schema({
             index: '2dsphere'
         }
     },
-    availability: {
+    
+    // Availability & Working Hours
+    isAvailable: {
         type: Boolean,
         default: true
+    },
+    workingHoursStart: {
+        type: String,
+        default: '09:00'
+    },
+    workingHoursEnd: {
+        type: String,
+        default: '18:00'
+    },
+    emergencyAvailable: {
+        type: Boolean,
+        default: false
+    },
+    preferredAreas: {
+        type: [String],
+        default: []
+    },
+    maxTravelDistance: {
+        type: Number,
+        default: 10 // km
+    },
+    weeklyOffDay: {
+        type: String,
+        default: 'Sunday'
+    },
+
+    // Verification Flags
+    verificationStatus: {
+        type: String,
+        enum: ['Registered', 'Pending Verification', 'Verified', 'Rejected', 'Active', 'Blocked'],
+        default: 'Registered'
+    },
+    phoneVerified: {
+        type: Boolean,
+        default: false
+    },
+    idVerified: {
+        type: Boolean,
+        default: false
+    },
+    areaVerified: {
+        type: Boolean,
+        default: false
+    },
+    verificationNotes: {
+        type: String
     },
     isVerified: {
         type: Boolean,
         default: false
     },
+    isBlocked: {
+        type: Boolean,
+        default: false
+    },
+
+    // Performance & Stats
     trustScore: {
         type: Number,
         default: 50 // 0-100 scale
@@ -61,9 +130,25 @@ const WorkerSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
+    totalRatings: {
+        type: Number,
+        default: 0
+    },
     completedJobs: {
         type: Number,
         default: 0
+    },
+    complaintsCount: {
+        type: Number,
+        default: 0
+    },
+    responseTime: {
+        type: Number, // average response time in minutes
+        default: 30
+    },
+    profileCompletion: {
+        type: Number, // 0-100%
+        default: 50
     },
     role: {
         type: String,

@@ -20,6 +20,16 @@ const CustomerSchema = new mongoose.Schema({
     address: {
         type: String
     },
+    city: {
+        type: String
+    },
+    area: {
+        type: String
+    },
+    phoneVerified: {
+        type: Boolean,
+        default: false
+    },
     location: {
         // GeoJSON Point
         type: {

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Mic, Search } from 'lucide-react';
 import { startVoiceRecognition } from '../utils/voice';
+import toast from 'react-hot-toast';
 
 const VoiceSearch = ({ onSearch }) => {
   const [isListening, setIsListening] = useState(false);
@@ -17,7 +18,7 @@ const VoiceSearch = ({ onSearch }) => {
       (error) => {
         console.error(error);
         setIsListening(false);
-        alert('Voice search error or not supported.');
+        toast.error('Voice search error or not supported.');
       }
     );
   };

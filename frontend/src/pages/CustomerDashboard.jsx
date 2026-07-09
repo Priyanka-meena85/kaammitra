@@ -1,10 +1,13 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, List, AlertTriangle, User } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 const CustomerDashboard = () => {
   const navigate = useNavigate();
-  const user = JSON.parse(localStorage.getItem('kaammitra_user') || '{"name": "Customer"}');
+  const { user, logout, loading } = useAuth();
+
+  if (loading || !user) return <div className="p-8 text-center">Loading...</div>;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -15,7 +18,7 @@ const CustomerDashboard = () => {
         </div>
         <button 
           onClick={() => {
-            localStorage.removeItem('kaammitra_user');
+            logout();
             navigate('/login');
           }}
           className="bg-bg-soft-blue hover:bg-border-gray text-text-gray px-4 py-2 rounded-lg font-medium"

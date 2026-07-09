@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Shield, Phone, MapPin, Star, AlertTriangle } from 'lucide-react';
 import VoiceSearch from '../components/VoiceSearch';
@@ -6,11 +6,42 @@ import ServiceCard from '../components/ServiceCard';
 import WorkerCard from '../components/WorkerCard';
 import TrustCard from '../components/TrustCard';
 import { services } from '../data/services';
-import { workers } from '../data/workers';
+import { workers as dummyWorkers } from '../data/workers';
 import { getUserLocation } from '../utils/location';
+import api from '../utils/api';
+import toast from 'react-hot-toast';
 
 const Home = () => {
   const navigate = useNavigate();
+  const [topWorkers, setTopWorkers] = useState([]);
+  const [loadingWorkers, setLoadingWorkers] = useState(true);
+
+  useEffect(() => {
+    const fetchWorkers = async () => {
+      try {
+        const res = await api.get('/workers?limit=4');
+        if (res.data.data.length > 0) {
+          setTopWorkers(res.data.data.slice(0, 4));
+        } else {
+          if (import.meta.env.DEV && import.meta.env.VITE_ENABLE_DEMO_DATA === 'true') {
+            setTopWorkers(dummyWorkers.slice(0, 4));
+          } else {
+            setTopWorkers([]);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch workers', err);
+        if (import.meta.env.DEV && import.meta.env.VITE_ENABLE_DEMO_DATA === 'true') {
+          setTopWorkers(dummyWorkers.slice(0, 4));
+        } else {
+          setTopWorkers([]);
+        }
+      } finally {
+        setLoadingWorkers(false);
+      }
+    };
+    fetchWorkers();
+  }, []);
 
   const handleSearch = (query) => {
     navigate(`/workers?service=${encodeURIComponent(query)}`);
@@ -20,9 +51,9 @@ const Home = () => {
     try {
       const loc = await getUserLocation();
       localStorage.setItem('user_location', JSON.stringify(loc));
-      alert('Location saved! We will show workers near you.');
+      toast.success('Location saved! We will show workers near you.');
     } catch (error) {
-      alert('Could not get location. Please allow location access.');
+      toast.error('Could not get location. Please allow location access.');
     }
   };
 
@@ -150,9 +181,13 @@ const Home = () => {
           </div>
           
           <div className="grid lg:grid-cols-2 gap-6">
-            {workers.slice(0, 4).map(worker => (
-              <WorkerCard key={worker.id} worker={worker} />
-            ))}
+            {loadingWorkers ? (
+              <div className="col-span-2 text-center text-text-gray py-4">Loading workers...</div>
+            ) : (
+              topWorkers.map((worker, index) => (
+                <WorkerCard key={worker._id || worker.id || index} worker={worker} />
+              ))
+            )}
           </div>
           
           <div className="mt-8 text-center sm:hidden">

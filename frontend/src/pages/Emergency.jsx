@@ -1,66 +1,142 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, Phone, MapPin, Zap, Droplet } from 'lucide-react';
+import { AlertTriangle, Phone, MapPin, Zap, MessageCircle } from 'lucide-react';
 import { getUserLocation } from '../utils/location';
+import api from '../utils/api';
+import toast from 'react-hot-toast';
 
 const Emergency = () => {
   const navigate = useNavigate();
+  const [formData, setFormData] = useState({
+    service: 'Electrician',
+    phone: '',
+    note: ''
+  });
+  const [location, setLocation] = useState(null);
   const [address, setAddress] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleLocation = async () => {
     try {
-      await getUserLocation();
-      setAddress('Fetched from GPS Location');
-      alert('Location saved. Showing nearby emergency workers.');
+      const loc = await getUserLocation();
+      setLocation(loc);
+      setAddress('Current Location Fetched');
+      toast.success('Location saved for faster help!');
     } catch(e) {
-      alert('Location access denied');
+      toast.error('Location access denied');
+    }
+  };
+
+  const handleEmergencySubmit = async (e) => {
+    e.preventDefault();
+    if (!formData.phone || formData.phone.length < 10) {
+      return toast.error('Please enter a valid phone number');
+    }
+
+    setIsSubmitting(true);
+    try {
+      await api.post('/emergency-leads', {
+        ...formData,
+        latitude: location?.lat,
+        longitude: location?.lng,
+        area: address
+      });
+      toast.success('Emergency Request Sent! Help is on the way.');
+      navigate('/');
+    } catch (err) {
+      toast.error('Failed to submit. Please call support directly.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const findNearest = (type) => {
+    if (!formData.service) return toast.error('Select a service first');
+    
+    if (type === 'call') {
+      window.open('tel:18001234567', '_self');
+    } else {
+      window.open('https://wa.me/919876543210?text=I%20need%20emergency%20help%20for%20' + formData.service, '_blank');
     }
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-12">
-      <div className="bg-accent-orange rounded-3xl shadow-xl text-white p-8 md:p-12 text-center mb-12">
-        <AlertTriangle size={64} className="mx-auto mb-6 text-red-200 animate-pulse" />
-        <h1 className="text-4xl md:text-5xl font-extrabold mb-4">Emergency Help</h1>
-        <p className="text-xl text-red-100 max-w-2xl mx-auto">
-          Need immediate assistance? Select an urgent service below and we will connect you to the nearest available worker right now.
+    <div className="max-w-3xl mx-auto px-4 py-8">
+      <div className="bg-orange-500 rounded-3xl shadow-xl text-white p-8 text-center mb-8">
+        <AlertTriangle size={56} className="mx-auto mb-4 text-orange-200 animate-pulse" />
+        <h1 className="text-3xl md:text-4xl font-extrabold mb-2">Emergency Help</h1>
+        <p className="text-orange-100 max-w-xl mx-auto text-lg">
+          Fast response for urgent home problems.
         </p>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-8 mb-12">
-        <div 
-          onClick={() => navigate('/workers?service=Electrician')}
-          className="bg-card-white border-2 border-red-100 hover:border-red-500 rounded-2xl p-6 text-center cursor-pointer shadow-sm hover:shadow-lg transition-all group"
-        >
-          <Zap size={48} className="mx-auto mb-4 text-accent-orange group-hover:scale-110 transition-transform" />
-          <h2 className="text-2xl font-bold text-navy mb-2">Short Circuit / Power Cut</h2>
-          <p className="text-text-gray">Urgent Electrician (बिजली मिस्त्री)</p>
-        </div>
-        
-        <div 
-          onClick={() => navigate('/workers?service=Plumber')}
-          className="bg-card-white border-2 border-red-100 hover:border-red-500 rounded-2xl p-6 text-center cursor-pointer shadow-sm hover:shadow-lg transition-all group"
-        >
-          <Droplet size={48} className="mx-auto mb-4 text-primary group-hover:scale-110 transition-transform" />
-          <h2 className="text-2xl font-bold text-navy mb-2">Pipe Burst / Leakage</h2>
-          <p className="text-text-gray">Urgent Plumber (प्लम्बर)</p>
-        </div>
-      </div>
+      <div className="bg-card-white rounded-3xl shadow-sm border border-border-gray p-6 md:p-8">
+        <form onSubmit={handleEmergencySubmit} className="space-y-6">
+          
+          <div>
+            <label className="block text-sm font-bold text-navy mb-2">What is the problem?</label>
+            <div className="grid grid-cols-2 gap-4">
+               <label className={`border-2 rounded-xl p-4 flex flex-col items-center cursor-pointer transition ${formData.service === 'Electrician' ? 'border-orange-500 bg-orange-50' : 'border-gray-200 hover:border-orange-300'}`}>
+                  <input type="radio" name="service" value="Electrician" className="hidden" onChange={(e) => setFormData({...formData, service: e.target.value})} checked={formData.service === 'Electrician'} />
+                  <Zap size={32} className={formData.service === 'Electrician' ? 'text-orange-600' : 'text-gray-400'} />
+                  <span className="mt-2 font-bold text-navy">Electrician</span>
+               </label>
+               <label className={`border-2 rounded-xl p-4 flex flex-col items-center cursor-pointer transition ${formData.service === 'Plumber' ? 'border-orange-500 bg-orange-50' : 'border-gray-200 hover:border-orange-300'}`}>
+                  <input type="radio" name="service" value="Plumber" className="hidden" onChange={(e) => setFormData({...formData, service: e.target.value})} checked={formData.service === 'Plumber'} />
+                  <Zap size={32} className={formData.service === 'Plumber' ? 'text-orange-600' : 'text-gray-400'} />
+                  <span className="mt-2 font-bold text-navy">Plumber</span>
+               </label>
+            </div>
+          </div>
 
-      <div className="bg-card-white rounded-3xl shadow-sm border border-border-gray p-8 text-center">
-        <h2 className="text-2xl font-bold text-navy mb-6">Or Call Emergency Support</h2>
-        <button 
-          onClick={() => window.open('tel:18001234567', '_self')}
-          className="inline-flex items-center gap-3 bg-accent-orange hover:bg-accent-orange-hover text-white px-8 py-4 rounded-full font-bold text-xl shadow-lg transition-all"
-        >
-          <Phone size={24} /> Call 1800-123-4567
-        </button>
-        <div className="mt-8">
-          <button onClick={handleLocation} className="text-primary font-bold flex items-center gap-2 justify-center mx-auto hover:underline">
-            <MapPin size={20} /> Share Location for Faster Help
-          </button>
-          {address && <p className="text-sm text-accent-green mt-2">{address}</p>}
-        </div>
+          <div>
+             <label className="block text-sm font-bold text-navy mb-2">Your Phone Number</label>
+             <div className="relative">
+                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                <input 
+                  type="tel" 
+                  required
+                  value={formData.phone}
+                  onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                  placeholder="Enter mobile number" 
+                  className="w-full pl-10 pr-4 py-4 rounded-xl border border-gray-300 focus:ring-2 focus:ring-orange-500 text-lg font-bold"
+                />
+             </div>
+          </div>
+
+          <div>
+             <button type="button" onClick={handleLocation} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-orange-200 text-orange-700 font-bold bg-orange-50 hover:bg-orange-100 transition">
+                <MapPin size={20} /> {address ? 'Location Saved' : 'Share Current Location (Faster Match)'}
+             </button>
+          </div>
+
+          <div>
+             <label className="block text-sm font-bold text-navy mb-2">Any Note? (Optional)</label>
+             <input 
+               type="text" 
+               value={formData.note}
+               onChange={(e) => setFormData({...formData, note: e.target.value})}
+               placeholder="e.g. Water leaking everywhere" 
+               className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-orange-500"
+             />
+          </div>
+
+          <div className="pt-4 space-y-4">
+             <button disabled={isSubmitting} type="submit" className="w-full bg-orange-600 hover:bg-orange-700 text-white py-4 rounded-2xl font-bold text-lg shadow-lg transition-all disabled:opacity-50">
+               {isSubmitting ? 'Sending...' : 'Request Emergency Help'}
+             </button>
+             
+             <div className="grid grid-cols-2 gap-4">
+                <button type="button" onClick={() => findNearest('call')} className="flex items-center justify-center gap-2 bg-green-100 text-green-800 hover:bg-green-200 py-3 rounded-xl font-bold transition">
+                   <Phone size={18} /> Call Nearest
+                </button>
+                <button type="button" onClick={() => findNearest('wa')} className="flex items-center justify-center gap-2 bg-green-500 text-white hover:bg-green-600 py-3 rounded-xl font-bold transition">
+                   <MessageCircle size={18} /> WhatsApp
+                </button>
+             </div>
+          </div>
+
+        </form>
       </div>
     </div>
   );

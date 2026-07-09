@@ -1,107 +1,134 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Phone, MessageCircle, Star, MapPin, BadgeCheck, ShieldCheck, Volume2 } from 'lucide-react';
-import { getDistanceZone } from '../utils/location';
-import { speakText } from '../utils/voice';
+import { Link } from 'react-router-dom';
+import { Star, MapPin, Phone, MessageCircle, ShieldCheck, Clock, Zap } from 'lucide-react';
+import { calculateMatchingScore, getMatchingBadge } from '../utils/matchingScore';
+import { useSimpleMode } from '../context/SimpleModeContext';
+import { speakText } from '../utils/speech';
+import { Volume2 } from 'lucide-react';
+import api from '../utils/api';
+import { useAuth } from '../context/AuthContext';
 
 const WorkerCard = ({ worker }) => {
-  const navigate = useNavigate();
-  const zone = getDistanceZone(worker.distance);
-
-  const handleCall = (e) => {
+  const { user } = useAuth();
+  const { isSimpleMode } = useSimpleMode();
+  
+  // Normalize old dummy fields vs new backend fields safely
+  const id = worker._id || worker.id;
+  const name = worker.name || 'Worker Name';
+  const service = worker.service || (worker.services && worker.services[0]) || 'Service';
+  const price = worker.expectedCharge || worker.startingPrice || 0;
+  
+  const handleCallWorker = async (e) => {
     e.stopPropagation();
-    window.open(`tel:+91${worker.phone}`, '_self');
+    try {
+      await api.post('/leads', { workerId: worker._id || worker.id, customerId: user?._id || null, workerName: worker.name, workerPhone: worker.phone, service: worker.service || worker.services?.[0], source: 'call', pageSource: 'worker-card' });
+    } catch(e) {}
+    window.location.href = `tel:${worker.phone}`;
   };
 
-  const handleWhatsApp = (e) => {
+  const handleWhatsAppWorker = async (e) => {
     e.stopPropagation();
-    const text = encodeURIComponent(`Hi ${worker.name}, I need your ${worker.service} service.`);
-    window.open(`https://wa.me/91${worker.phone}?text=${text}`, '_blank');
+    try {
+      await api.post('/leads', { workerId: worker._id || worker.id, customerId: user?._id || null, workerName: worker.name, workerPhone: worker.phone, service: worker.service || worker.services?.[0], source: 'whatsapp', pageSource: 'worker-card' });
+    } catch(e) {}
+    const msg = encodeURIComponent(`Namaste, mujhe ${worker.service || 'service'} chahiye. Kya aap available hain?`);
+    window.location.href = `https://wa.me/91${worker.phone}?text=${msg}`;
   };
 
   const handleListen = (e) => {
     e.stopPropagation();
-    const text = `${worker.isVerified ? 'Ye worker verified hai.' : ''} Naam ${worker.name}. Service ${worker.service}. Rating ${worker.rating}. Distance ${worker.distance} kilometer. Charge ${worker.expectedCharge} rupaye se shuru.`;
-    speakText(text);
+    speakText(`Ye worker ${worker.name} hain. Service ${worker.service || 'general'}. Rating ${worker.rating || 0}. Distance ${worker.distance || 0} kilometer. Charge ${worker.expectedCharge || 300} rupaye se shuru.`);
   };
 
-  const handleBook = (e) => {
-    e.stopPropagation();
-    navigate(`/booking/${worker.id}`);
-  };
+  const isVerified = worker.isVerified || worker.verificationStatus === 'Verified';
+  const rating = worker.averageRating || worker.rating || 0;
+  const jobs = worker.completedJobs || worker.jobs || 0;
+  
+  const score = calculateMatchingScore(worker);
+  const badge = getMatchingBadge(worker, score);
 
   return (
-    <div 
-      className="bg-card-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 border border-border-gray overflow-hidden cursor-pointer group"
-      onClick={() => navigate(`/worker/${worker.id}`)}
-    >
-      <div className="p-5 flex flex-col sm:flex-row gap-5 relative">
-        {/* Availability Badge */}
-        <div className={`absolute top-4 right-4 px-2 py-1 rounded-full text-xs font-bold ${worker.isAvailable ? 'bg-accent-green/20 text-accent-green-hover' : 'bg-accent-orange/20 text-accent-orange-hover'}`}>
-          {worker.isAvailable ? 'Available Now' : 'Busy'}
-        </div>
-
-        {/* Photo */}
-        <div className="relative flex-shrink-0 mx-auto sm:mx-0">
-          <img 
-            src={worker.photo} 
-            alt={worker.name} 
-            className="w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover border-4 border-gray-50"
-          />
-          {worker.isVerified && (
-            <div className="absolute bottom-0 right-0 bg-primary text-white rounded-full p-1 shadow-md" title="Verified Worker">
-              <BadgeCheck size={20} />
-            </div>
-          )}
-        </div>
-
-        {/* Info */}
-        <div className="flex-1 text-center sm:text-left pt-2">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-1">
-            <h3 className="text-xl font-bold text-navy">{worker.name}</h3>
-            {worker.trustScore >= 80 && (
-              <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-800 text-xs px-2 py-1 rounded-full font-semibold mx-auto sm:mx-0">
-                <ShieldCheck size={14} /> Trust {worker.trustScore}%
-              </span>
-            )}
-          </div>
-          <p className="text-primary font-semibold mb-2">{worker.service}</p>
-          
-          <div className="flex flex-wrap justify-center sm:justify-start items-center gap-3 text-sm text-text-gray mb-3">
-            <div className="flex items-center gap-1 font-medium">
-              <Star size={16} className="text-yellow-400 fill-yellow-400" />
-              {worker.rating} <span className="text-border-gray">({worker.totalRatings})</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <MapPin size={16} className="text-border-gray" />
-              {worker.distance} km away
-            </div>
-            <div className={`px-2 py-0.5 rounded-md text-xs font-semibold ${zone.color}`}>
-              {zone.label}
-            </div>
-          </div>
-          
-          <p className="text-text-gray font-medium">Starts at ₹{worker.expectedCharge}</p>
-        </div>
+    <div className="bg-card-white rounded-3xl shadow-md border border-border-gray overflow-hidden hover:shadow-lg transition-all group relative">
+      {/* Badges */}
+      <div className="absolute top-4 right-4 flex flex-col items-end gap-2 z-10">
+        {worker.isAvailable ? (
+          <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-1 rounded-md shadow-sm">Available Now</span>
+        ) : (
+          <span className="bg-red-100 text-red-700 text-xs font-bold px-2 py-1 rounded-md shadow-sm">Busy</span>
+        )}
+        {worker.emergencyAvailable && (
+          <span className="bg-orange-100 text-orange-700 text-xs font-bold px-2 py-1 rounded-md shadow-sm flex items-center gap-1"><Zap size={12}/> Emergency Ready</span>
+        )}
       </div>
 
-      {/* Actions */}
-      <div className="grid grid-cols-4 sm:grid-cols-5 border-t border-border-gray bg-bg-warm divide-x divide-gray-200">
-        <button onClick={handleCall} className="p-3 sm:py-4 flex flex-col items-center justify-center gap-1 text-text-gray hover:text-primary hover:bg-bg-soft-blue transition-colors">
-          <Phone size={20} />
-          <span className="text-xs font-medium">Call</span>
-        </button>
-        <button onClick={handleWhatsApp} className="p-3 sm:py-4 flex flex-col items-center justify-center gap-1 text-text-gray hover:text-accent-green hover:bg-accent-green/10 transition-colors">
-          <MessageCircle size={20} />
-          <span className="text-xs font-medium">WhatsApp</span>
-        </button>
-        <button onClick={handleListen} className="p-3 sm:py-4 flex flex-col items-center justify-center gap-1 text-text-gray hover:text-purple-600 hover:bg-purple-50 transition-colors">
-          <Volume2 size={20} />
-          <span className="text-xs font-medium">Listen</span>
-        </button>
-        <button onClick={handleBook} className="col-span-1 sm:col-span-2 p-3 sm:py-4 bg-accent-orange text-white font-bold hover:bg-accent-orange-hover transition-colors flex items-center justify-center h-full w-full">
-          Book Now
-        </button>
+      <div className="p-6">
+        <div className="flex gap-4 items-start mb-4">
+          <div className="relative">
+            <img 
+              src={worker.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=315D9C&color=fff`}
+              alt={name}
+              className="w-20 h-20 rounded-2xl object-cover border-2 border-bg-soft-blue"
+            />
+            {isVerified && (
+              <div className="absolute -bottom-2 -right-2 bg-accent-green text-white p-1 rounded-full border-2 border-white shadow-sm" title="Verified Worker">
+                <ShieldCheck size={16} />
+              </div>
+            )}
+          </div>
+          <div className="flex-1 pt-1">
+            <h3 className="text-xl font-bold text-navy group-hover:text-primary transition-colors">{name}</h3>
+            <p className="text-primary font-medium">{service}</p>
+            <div className="flex items-center gap-1 mt-1 text-sm text-text-gray">
+              <MapPin size={14} className="text-border-gray" />
+              <span>{worker.distance ? `${worker.distance} km away` : (worker.area || worker.address || 'Nearby')}</span>
+            </div>
+          </div>
+        </div>
+
+        {badge && !isSimpleMode && (
+          <div className="mb-3 inline-block bg-blue-50 border border-blue-100 text-blue-700 text-xs font-bold px-2 py-1 rounded">
+            ✨ {badge}
+          </div>
+        )}
+
+        <div className="grid grid-cols-2 gap-4 mb-5 p-3 bg-bg-soft-blue/30 rounded-xl">
+          <div className="flex flex-col">
+            <span className="text-xs text-text-gray font-medium mb-1">Rating</span>
+            <div className="flex items-center gap-1 font-bold text-navy">
+              <Star size={16} className="text-yellow-400 fill-yellow-400" />
+              <span>{rating > 0 ? rating.toFixed(1) : 'New'} <span className="text-xs font-normal text-text-gray">({jobs} jobs)</span></span>
+            </div>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-xs text-text-gray font-medium mb-1">Expected Charge</span>
+            <span className="font-bold text-navy">
+              {price > 0 ? `Starts ₹${price}` : 'Ask Price'}
+            </span>
+          </div>
+        </div>
+        
+        {worker.workingHoursStart && !isSimpleMode && (
+           <p className="text-xs text-gray-500 flex items-center gap-1 mb-4"><Clock size={12}/> Working hours: {worker.workingHoursStart} - {worker.workingHoursEnd}</p>
+        )}
+
+        <div className="flex gap-2">
+          {!isSimpleMode && (
+              <>
+                  <button className="flex-1 bg-green-50 text-green-600 font-bold py-2 rounded-xl hover:bg-green-100 transition-colors flex items-center justify-center gap-1">
+                    <Phone size={18} /> Call
+                  </button>
+                  <button className="flex-1 bg-green-500 text-white font-bold py-2 rounded-xl hover:bg-green-600 transition-colors flex items-center justify-center gap-1">
+                    <MessageCircle size={18} /> Chat
+                  </button>
+              </>
+          )}
+          <Link 
+            to={`/worker/${id}`} 
+            className={`bg-primary text-white font-bold py-2 rounded-xl hover:bg-primary-hover transition-colors text-center shadow-md ${isSimpleMode ? 'w-full py-4 text-lg' : 'flex-1'}`}
+          >
+            {isSimpleMode ? 'View & Book / देखें' : 'View Profile'}
+          </Link>
+        </div>
       </div>
     </div>
   );
