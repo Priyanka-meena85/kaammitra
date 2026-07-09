@@ -20,7 +20,9 @@ const AdminDashboard = () => {
   const [pendingWorkers, setPendingWorkers] = useState([]);
   const [callbacks, setCallbacks] = useState([]);
   const [areaRequests, setAreaRequests] = useState([]);
-  const [activeTab, setActiveTab] = useState('workers'); // workers, callbacks, areas
+  const [complaints, setComplaints] = useState([]);
+  const [bookings, setBookings] = useState([]);
+  const [activeTab, setActiveTab] = useState('workers'); // workers, callbacks, areas, complaints, bookings
 
   useEffect(() => {
     const fetchAdminData = async () => {
@@ -28,15 +30,19 @@ const AdminDashboard = () => {
         const statsRes = await api.get('/admin/stats');
         setStats(statsRes.data.data);
         
-        const [workersRes, callbacksRes, areasRes] = await Promise.all([
+        const [workersRes, callbacksRes, areasRes, complaintsRes, bookingsRes] = await Promise.all([
            api.get('/admin/workers'),
            api.get('/callback-requests'),
-           api.get('/areas/launch')
+           api.get('/areas/launch'),
+           api.get('/admin/complaints'),
+           api.get('/admin/bookings')
         ]);
         
         setPendingWorkers(workersRes.data.data.filter(w => w.verificationStatus === 'Pending Verification' || !w.isVerified));
         setCallbacks(callbacksRes.data.data);
         setAreaRequests(areasRes.data.data);
+        setComplaints(complaintsRes.data.data);
+        setBookings(bookingsRes.data.data);
 
       } catch (err) {
         console.error('Failed to load admin data', err);
@@ -51,14 +57,36 @@ const AdminDashboard = () => {
   }, [user]);
 
   const handleVerify = async (id, status) => {
+    const note = prompt(`Enter admin notes for ${status === 'approve' ? 'approval' : 'rejection'}:`);
     try {
-      // Approve means verify and also set status to Verified
-      await api.patch(`/admin/workers/${id}/verify`, { isVerified: status === 'approve', verificationStatus: status === 'approve' ? 'Verified' : 'Rejected' });
+      await api.patch(`/admin/workers/${id}/verify`, { 
+        status: status === 'approve' ? 'Verified' : 'Rejected',
+        adminNote: note,
+        phoneVerified: true,
+        idVerified: status === 'approve',
+        areaVerified: true
+      });
       setPendingWorkers(prev => prev.filter(w => w._id !== id));
       toast.success(`Worker ${status === 'approve' ? 'approved' : 'rejected'} successfully`);
-      setStats(prev => ({...prev, workers: status === 'approve' ? prev.workers + 1 : prev.workers}));
+      if (status === 'approve') setStats(prev => ({...prev, workers: prev.workers + 1}));
     } catch (err) {
       toast.error('Action failed');
+    }
+  };
+
+  const handleResolveComplaint = async (id) => {
+    const note = prompt(`Enter resolution notes:`);
+    if (!note) return;
+    try {
+      await api.patch(`/admin/complaints/${id}/resolve`, { 
+        status: 'Resolved',
+        adminNote: note
+      });
+      setComplaints(prev => prev.map(c => c._id === id ? { ...c, status: 'Resolved', adminNote: note } : c));
+      toast.success(`Complaint resolved`);
+      setStats(prev => ({...prev, complaints: prev.complaints - 1}));
+    } catch (err) {
+      toast.error('Failed to resolve complaint');
     }
   };
 
@@ -108,50 +136,62 @@ const AdminDashboard = () => {
             <div className="bg-bg-soft-blue text-primary p-3 rounded-xl"><Users size={24} /></div>
           </div>
           <h2 className="text-text-gray font-medium">Total Customers</h2>
-          <p className="text-3xl font-bold text-navy">{stats.customers}</p>
+          <p className="text-3xl font-bold text-navy">{stats.totalCustomers || stats.customers}</p>
         </div>
         <div className="bg-card-white rounded-2xl shadow-sm border border-border-gray p-6 hover:shadow-md transition">
           <div className="flex justify-between items-start mb-4">
             <div className="bg-green-100 text-green-600 p-3 rounded-xl"><Briefcase size={24} /></div>
           </div>
-          <h2 className="text-text-gray font-medium">Verified Workers</h2>
-          <p className="text-3xl font-bold text-navy">{stats.workers}</p>
+          <h2 className="text-text-gray font-medium">Total Workers</h2>
+          <p className="text-3xl font-bold text-navy">{stats.totalWorkers || stats.workers}</p>
         </div>
         <div className="bg-card-white rounded-2xl shadow-sm border border-border-gray p-6 hover:shadow-md transition">
           <div className="flex justify-between items-start mb-4">
             <div className="bg-blue-100 text-blue-600 p-3 rounded-xl"><FileText size={24} /></div>
           </div>
           <h2 className="text-text-gray font-medium">Total Bookings</h2>
-          <p className="text-3xl font-bold text-navy">{stats.bookings}</p>
+          <p className="text-3xl font-bold text-navy">{stats.totalBookings || stats.bookings}</p>
         </div>
         <div className="bg-card-white rounded-2xl shadow-sm border border-border-gray p-6 hover:shadow-md transition">
           <div className="flex justify-between items-start mb-4">
             <div className="bg-orange-100 text-orange-600 p-3 rounded-xl"><AlertTriangle size={24} /></div>
           </div>
-          <h2 className="text-text-gray font-medium">Open Complaints</h2>
-          <p className="text-3xl font-bold text-navy">{stats.complaints}</p>
+          <h2 className="text-text-gray font-medium">Total Complaints</h2>
+          <p className="text-3xl font-bold text-navy">{stats.totalComplaints || stats.complaints}</p>
         </div>
       </div>
 
       <div className="bg-card-white rounded-2xl shadow-sm border border-border-gray overflow-hidden">
         
         {/* Tabs */}
-        <div className="flex border-b border-border-gray bg-gray-50">
+        <div className="flex border-b border-border-gray bg-gray-50 overflow-x-auto whitespace-nowrap">
             <button 
                 onClick={() => setActiveTab('workers')} 
-                className={`flex-1 py-4 font-bold text-sm md:text-base transition ${activeTab === 'workers' ? 'bg-white border-b-2 border-primary text-primary' : 'text-gray-500 hover:text-navy'}`}
+                className={`px-6 py-4 font-bold text-sm md:text-base transition ${activeTab === 'workers' ? 'bg-white border-b-2 border-primary text-primary' : 'text-gray-500 hover:text-navy'}`}
             >
                 Pending Workers ({pendingWorkers.length})
             </button>
             <button 
+                onClick={() => setActiveTab('complaints')} 
+                className={`px-6 py-4 font-bold text-sm md:text-base transition ${activeTab === 'complaints' ? 'bg-white border-b-2 border-primary text-primary' : 'text-gray-500 hover:text-navy'}`}
+            >
+                Complaints ({complaints.filter(c => c.status !== 'Resolved').length})
+            </button>
+            <button 
+                onClick={() => setActiveTab('bookings')} 
+                className={`px-6 py-4 font-bold text-sm md:text-base transition ${activeTab === 'bookings' ? 'bg-white border-b-2 border-primary text-primary' : 'text-gray-500 hover:text-navy'}`}
+            >
+                Bookings ({bookings.length})
+            </button>
+            <button 
                 onClick={() => setActiveTab('callbacks')} 
-                className={`flex-1 py-4 font-bold text-sm md:text-base transition ${activeTab === 'callbacks' ? 'bg-white border-b-2 border-primary text-primary' : 'text-gray-500 hover:text-navy'}`}
+                className={`px-6 py-4 font-bold text-sm md:text-base transition ${activeTab === 'callbacks' ? 'bg-white border-b-2 border-primary text-primary' : 'text-gray-500 hover:text-navy'}`}
             >
                 Callback Requests ({callbacks.length})
             </button>
             <button 
                 onClick={() => setActiveTab('areas')} 
-                className={`flex-1 py-4 font-bold text-sm md:text-base transition ${activeTab === 'areas' ? 'bg-white border-b-2 border-primary text-primary' : 'text-gray-500 hover:text-navy'}`}
+                className={`px-6 py-4 font-bold text-sm md:text-base transition ${activeTab === 'areas' ? 'bg-white border-b-2 border-primary text-primary' : 'text-gray-500 hover:text-navy'}`}
             >
                 Area Launches ({areaRequests.length})
             </button>
@@ -189,9 +229,9 @@ const AdminDashboard = () => {
                                     <p className="text-sm text-text-gray flex items-center gap-1"><MapPin size={12}/> {worker.address || worker.area}</p>
                                 </td>
                                 <td className="p-4">
-                                    <div className="flex gap-2">
-                                        <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded font-bold">ID Uploaded</span>
-                                        <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded font-bold">Photo Uploaded</span>
+                                    <div className="flex flex-col gap-1">
+                                        <a href={worker.profilePhotoUrl} target="_blank" rel="noreferrer" className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded font-bold hover:underline">View Photo</a>
+                                        <a href={worker.idDocumentUrl} target="_blank" rel="noreferrer" className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded font-bold hover:underline">View {worker.documentType || 'ID'}</a>
                                     </div>
                                 </td>
                                 <td className="p-4">
@@ -204,6 +244,43 @@ const AdminDashboard = () => {
                         ))}
                         </tbody>
                     </table>
+                </div>
+            )}
+
+            {/* Complaints Tab */}
+            {activeTab === 'complaints' && (
+                <div className="space-y-4">
+                    {complaints.length === 0 && <EmptyState message="No complaints found." />}
+                    {complaints.map(c => (
+                        <div key={c._id} className="flex flex-col md:flex-row justify-between items-center p-4 border border-border-gray rounded-xl bg-gray-50">
+                            <div>
+                                <p className="font-bold text-navy">Type: {c.complaintType}</p>
+                                <p className="text-sm text-text-gray mt-1">Desc: {c.description}</p>
+                                <p className="text-xs text-primary font-bold mt-2">Status: {c.status}</p>
+                                {c.adminNote && <p className="text-xs text-green-700 italic mt-1">Resolution: {c.adminNote}</p>}
+                            </div>
+                            <div className="mt-4 md:mt-0 flex gap-2">
+                                {c.status !== 'Resolved' && <button onClick={() => handleResolveComplaint(c._id)} className="bg-accent-green text-white px-4 py-2 rounded-lg font-bold text-sm">Resolve with Notes</button>}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {/* Bookings Tab */}
+            {activeTab === 'bookings' && (
+                <div className="space-y-4">
+                    {bookings.length === 0 && <EmptyState message="No bookings found." />}
+                    {bookings.map(b => (
+                        <div key={b._id} className="flex flex-col md:flex-row justify-between items-center p-4 border border-border-gray rounded-xl bg-gray-50">
+                            <div>
+                                <p className="font-bold text-navy">Service: {b.service || b.serviceId?.name}</p>
+                                <p className="text-sm text-text-gray">Customer: {b.customerId?.name} ({b.customerId?.phone})</p>
+                                <p className="text-sm text-text-gray">Worker: {b.workerId?.name} ({b.workerId?.phone})</p>
+                                <p className="text-xs mt-1">Status: <span className="font-bold">{b.status}</span></p>
+                            </div>
+                        </div>
+                    ))}
                 </div>
             )}
 

@@ -30,10 +30,25 @@ const Workers = () => {
   const [emergencyAvailableOnly, setEmergencyAvailableOnly] = useState(false);
   const [showFilters, setShowFilters] = useState(!isSimpleMode);
 
+  const [areas, setAreas] = useState([]);
+
+  useEffect(() => {
+    const fetchAreas = async () => {
+      try {
+        const res = await api.get('/areas');
+        setAreas(res.data.data);
+      } catch (err) {
+        console.error('Failed to fetch areas', err);
+      }
+    };
+    fetchAreas();
+  }, []);
+
   useEffect(() => {
     const fetchWorkers = async () => {
       try {
-        const res = await api.get('/workers');
+        const url = searchParams.get('city') ? `/workers?city=${searchParams.get('city')}` : '/workers';
+        const res = await api.get(url);
         if (res.data.data.length > 0) {
           setAllWorkers(res.data.data);
         } else {
@@ -59,7 +74,7 @@ const Workers = () => {
       }
     };
     fetchWorkers();
-  }, []);
+  }, [searchParams]);
 
   useEffect(() => {
     let result = [...allWorkers];
@@ -158,9 +173,9 @@ const Workers = () => {
                       className="w-full p-2 rounded-lg border border-border-gray focus:ring-2 focus:ring-primary focus:outline-none"
                     >
                       <option value="All">All Areas</option>
-                      <option value="Jaipur">Jaipur</option>
-                      <option value="Ajmer">Ajmer</option>
-                      <option value="Tonk">Tonk</option>
+                      {[...new Set(areas.map(a => a.city))].map(city => (
+                        <option key={city} value={city}>{city}</option>
+                      ))}
                     </select>
                   </div>
                 </>

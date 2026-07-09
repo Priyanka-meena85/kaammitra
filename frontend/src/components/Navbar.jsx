@@ -14,9 +14,8 @@ const Navbar = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16 items-center">
           <div className="flex-shrink-0 flex items-center">
-            <Link to="/" className="text-2xl font-bold text-primary flex items-center gap-2">
-              <span className="bg-primary text-white p-1 rounded-lg">K</span>
-              KaamMitra
+            <Link to="/" className="flex items-center">
+              <img src="/logo.png" alt="KaamMitra Logo" className="h-12 w-auto object-contain" />
             </Link>
           </div>
           

@@ -16,35 +16,45 @@ const Home = () => {
   const [topWorkers, setTopWorkers] = useState([]);
   const [loadingWorkers, setLoadingWorkers] = useState(true);
 
+  const [areas, setAreas] = useState([]);
+  const [selectedCity, setSelectedCity] = useState('');
+  const [showLaunchRequest, setShowLaunchRequest] = useState(false);
+  const [launchFormData, setLaunchFormData] = useState({ name: '', phone: '', service: 'General' });
+
+  useEffect(() => {
+    const fetchAreas = async () => {
+      try {
+        const res = await api.get('/areas');
+        setAreas(res.data.data);
+      } catch (err) {
+        console.error('Failed to fetch areas', err);
+      }
+    };
+    fetchAreas();
+  }, []);
+
   useEffect(() => {
     const fetchWorkers = async () => {
       try {
-        const res = await api.get('/workers?limit=4');
+        const url = selectedCity ? `/workers?limit=4&city=${selectedCity}` : '/workers?limit=4';
+        const res = await api.get(url);
         if (res.data.data.length > 0) {
           setTopWorkers(res.data.data.slice(0, 4));
         } else {
-          if (import.meta.env.DEV && import.meta.env.VITE_ENABLE_DEMO_DATA === 'true') {
-            setTopWorkers(dummyWorkers.slice(0, 4));
-          } else {
-            setTopWorkers([]);
-          }
+          setTopWorkers([]);
         }
       } catch (err) {
         console.error('Failed to fetch workers', err);
-        if (import.meta.env.DEV && import.meta.env.VITE_ENABLE_DEMO_DATA === 'true') {
-          setTopWorkers(dummyWorkers.slice(0, 4));
-        } else {
-          setTopWorkers([]);
-        }
+        setTopWorkers([]);
       } finally {
         setLoadingWorkers(false);
       }
     };
     fetchWorkers();
-  }, []);
+  }, [selectedCity]);
 
   const handleSearch = (query) => {
-    navigate(`/workers?service=${encodeURIComponent(query)}`);
+    navigate(`/workers?service=${encodeURIComponent(query)}${selectedCity ? `&city=${selectedCity}` : ''}`);
   };
 
   const handleUseLocation = async () => {
@@ -54,6 +64,28 @@ const Home = () => {
       toast.success('Location saved! We will show workers near you.');
     } catch (error) {
       toast.error('Could not get location. Please allow location access.');
+    }
+  };
+
+  const handleCityChange = (e) => {
+    const city = e.target.value;
+    if (city === 'Other') {
+      setShowLaunchRequest(true);
+      setSelectedCity('');
+    } else {
+      setSelectedCity(city);
+      setShowLaunchRequest(false);
+    }
+  };
+
+  const handleLaunchRequest = async (e) => {
+    e.preventDefault();
+    try {
+      await api.post('/areas/launch', { ...launchFormData, city: 'Requested City', area: 'Requested Area' });
+      toast.success('Request submitted! We will notify you when we launch.');
+      setShowLaunchRequest(false);
+    } catch (err) {
+      toast.error('Failed to submit request');
     }
   };
 
@@ -73,20 +105,50 @@ const Home = () => {
                 Find verified nearby workers for home, shop and business services by voice, call, WhatsApp or simple booking.
               </p>
               
-              <div className="flex flex-wrap gap-4 mb-8">
-                <button 
-                  onClick={() => navigate('/workers')}
-                  className="bg-primary hover:bg-primary-hover text-white px-6 py-3 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all"
+              <div className="mb-8 max-w-sm">
+                <label className="block text-sm font-bold text-navy mb-2">Select your city</label>
+                <select 
+                  value={selectedCity} 
+                  onChange={handleCityChange}
+                  className="w-full px-4 py-3 rounded-xl border border-border-gray shadow-sm focus:ring-2 focus:ring-primary focus:outline-none appearance-none bg-white text-lg font-medium text-navy"
                 >
-                  Find Worker
-                </button>
-                <button 
-                  onClick={() => navigate('/worker-register')}
-                  className="bg-card-white hover:bg-bg-warm text-primary border border-primary/30 px-6 py-3 rounded-xl font-bold text-lg shadow-sm hover:shadow-md transition-all"
-                >
-                  I am Worker (वर्कर बनें)
-                </button>
+                  <option value="">All Cities</option>
+                  {[...new Set(areas.map(a => a.city))].map(city => (
+                    <option key={city} value={city}>{city}</option>
+                  ))}
+                  <option value="Other">Other City...</option>
+                </select>
               </div>
+
+              {showLaunchRequest && (
+                <div className="mb-8 bg-white p-6 rounded-2xl shadow-lg border border-red-100">
+                  <h3 className="text-lg font-bold text-red-500 mb-2">KaamMitra is not active in your area yet.</h3>
+                  <p className="text-text-gray mb-4 text-sm">Request a launch in your area and we'll notify you!</p>
+                  <form onSubmit={handleLaunchRequest} className="space-y-3">
+                    <input type="text" required placeholder="Your Name" value={launchFormData.name} onChange={e => setLaunchFormData({...launchFormData, name: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-border-gray focus:ring-2 focus:ring-primary" />
+                    <input type="tel" required placeholder="Phone Number" value={launchFormData.phone} onChange={e => setLaunchFormData({...launchFormData, phone: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-border-gray focus:ring-2 focus:ring-primary" />
+                    <button type="submit" className="w-full bg-primary text-white font-bold py-2 rounded-xl shadow hover:bg-primary-hover">Request Launch in My Area</button>
+                    <button type="button" onClick={() => navigate('/callback-request')} className="w-full bg-card-white text-primary border border-primary font-bold py-2 rounded-xl shadow hover:bg-bg-soft-blue">Request Callback Instead</button>
+                  </form>
+                </div>
+              )}
+              
+              {!showLaunchRequest && (
+                <div className="flex flex-wrap gap-4 mb-8">
+                  <button 
+                    onClick={() => navigate(`/workers${selectedCity ? `?city=${selectedCity}` : ''}`)}
+                    className="bg-primary hover:bg-primary-hover text-white px-6 py-3 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all"
+                  >
+                    Find Worker
+                  </button>
+                  <button 
+                    onClick={() => navigate('/worker-register')}
+                    className="bg-card-white hover:bg-bg-warm text-primary border border-primary/30 px-6 py-3 rounded-xl font-bold text-lg shadow-sm hover:shadow-md transition-all"
+                  >
+                    I am Worker (वर्कर बनें)
+                  </button>
+                </div>
+              )}
               
               <button 
                 onClick={() => navigate('/emergency')}

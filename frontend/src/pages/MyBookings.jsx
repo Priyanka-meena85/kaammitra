@@ -9,23 +9,32 @@ import api from '../utils/api';
 
 const MyBookings = () => {
   const [bookings, setBookings] = useState([]);
+  const [complaints, setComplaints] = useState([]);
   const [complaintModalOpen, setComplaintModalOpen] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
   const { user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchBookings = async () => {
+    const fetchData = async () => {
       if (!user) return;
       try {
         const endpoint = user.role === 'worker' ? `/bookings/worker/${user._id}` : `/bookings/customer/${user._id}`;
         const res = await api.get(endpoint);
         setBookings(res.data.data);
+
+        // Fetch complaints to show status
+        try {
+          const compRes = await api.get('/complaints/my'); 
+          setComplaints(compRes.data.data);
+        } catch (e) {
+          console.warn('Could not fetch complaints', e);
+        }
       } catch (err) {
         console.error('Failed to load bookings', err);
       }
     };
-    fetchBookings();
+    fetchData();
   }, [user]);
 
   const getStatusColor = (status) => {
@@ -124,15 +133,28 @@ const MyBookings = () => {
                   </button>
                 )}
                 
-                <button 
-                  onClick={() => {
-                    setSelectedBooking(booking);
-                    setComplaintModalOpen(true);
-                  }}
-                  className="w-full flex justify-center items-center gap-2 bg-red-50 hover:bg-red-100 text-red-600 py-2 rounded-lg font-medium transition-colors mt-2"
-                >
-                  <AlertCircle size={18} /> Complaint
-                </button>
+                {(() => {
+                  const bookingComplaint = complaints.find(c => String(c.bookingId) === String(booking._id) || (c.booking && String(c.booking._id) === String(booking._id)));
+                  if (bookingComplaint) {
+                    return (
+                      <div className={`w-full flex justify-center items-center gap-2 py-2 rounded-lg font-medium mt-2 text-sm ${bookingComplaint.status === 'Resolved' ? 'bg-green-50 text-green-700' : 'bg-orange-50 text-orange-700'}`}>
+                        <AlertCircle size={16} /> 
+                        Complaint: {bookingComplaint.status}
+                      </div>
+                    );
+                  }
+                  return (
+                    <button 
+                      onClick={() => {
+                        setSelectedBooking(booking);
+                        setComplaintModalOpen(true);
+                      }}
+                      className="w-full flex justify-center items-center gap-2 bg-red-50 hover:bg-red-100 text-red-600 py-2 rounded-lg font-medium transition-colors mt-2"
+                    >
+                      <AlertCircle size={18} /> Complaint
+                    </button>
+                  );
+                })()}
 
                 <div className="text-center mt-auto pt-2">
                   <p className="text-xs text-border-gray">ID: {booking._id}</p>

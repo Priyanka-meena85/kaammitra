@@ -34,7 +34,9 @@ const WorkerRegister = () => {
     workingHoursEnd: '18:00',
     emergencyAvailable: false,
     maxTravelDistance: 10,
-    documentType: 'Aadhaar'
+    documentType: 'Aadhaar',
+    profilePhotoUrl: '',
+    idDocumentUrl: ''
   });
 
   const handleLocation = async () => {
@@ -44,6 +46,29 @@ const WorkerRegister = () => {
       toast.success('Location fetched successfully');
     } catch(e) {
       toast.error('Location access denied');
+    }
+  };
+
+  const handleFileUpload = async (e, field) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const data = new FormData();
+    data.append('file', file);
+
+    const uploadToast = toast.loading('Uploading document...');
+    try {
+      const res = await api.post('/upload', data, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      setFormData(prev => ({ 
+        ...prev, 
+        [field]: res.data.url,
+        [field.replace('Url', 'PublicId')]: res.data.public_id
+      }));
+      toast.success('Upload complete!', { id: uploadToast });
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Upload failed', { id: uploadToast });
     }
   };
 
@@ -84,6 +109,9 @@ const WorkerRegister = () => {
   const handleRegister = async (e) => {
     e.preventDefault();
     if (!phoneVerified) return toast.error('Please verify your phone number first');
+    if (!formData.profilePhotoUrl || !formData.idDocumentUrl) {
+      return toast.error('Please upload required verification documents');
+    }
 
     try {
       const payload = {
@@ -91,7 +119,9 @@ const WorkerRegister = () => {
         phone,
         phoneVerified: true,
         ...formData,
-        services: [formData.serviceCategory]
+        services: [formData.serviceCategory],
+        verificationStatus: 'Pending Verification',
+        submittedAt: new Date()
       };
       const res = await api.post('/auth/register', payload);
       login(res.data.user, res.data.token);
@@ -266,9 +296,10 @@ const WorkerRegister = () => {
             
             <div>
               <label className="block text-sm font-medium text-text-gray mb-2 flex items-center gap-2">
-                <Image size={18} className="text-text-gray" /> Profile Photo Placeholder
+                <Image size={18} className="text-text-gray" /> Profile Photo
               </label>
-              <input type="file" accept="image/*" className="w-full text-sm text-text-gray file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-bg-soft-blue file:text-primary-hover hover:file:bg-bg-soft-blue" />
+              <input type="file" onChange={(e) => handleFileUpload(e, 'profilePhotoUrl')} accept="image/*" className="w-full text-sm text-text-gray file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-bg-soft-blue file:text-primary-hover hover:file:bg-bg-soft-blue" />
+              {formData.profilePhotoUrl && <p className="text-green-500 text-sm mt-1">✓ Uploaded successfully</p>}
             </div>
 
             <div>
@@ -283,9 +314,10 @@ const WorkerRegister = () => {
 
             <div>
               <label className="block text-sm font-medium text-text-gray mb-2 flex items-center gap-2">
-                <FileText size={18} className="text-text-gray" /> ID Document Placeholder
+                <FileText size={18} className="text-text-gray" /> ID Document
               </label>
-              <input type="file" accept="image/*,.pdf" className="w-full text-sm text-text-gray file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-bg-soft-blue file:text-primary-hover hover:file:bg-bg-soft-blue" />
+              <input type="file" onChange={(e) => handleFileUpload(e, 'idDocumentUrl')} accept="image/*,.pdf" className="w-full text-sm text-text-gray file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-bg-soft-blue file:text-primary-hover hover:file:bg-bg-soft-blue" />
+              {formData.idDocumentUrl && <p className="text-green-500 text-sm mt-1">✓ Uploaded successfully</p>}
             </div>
 
             <div className="grid md:grid-cols-2 gap-6 pt-4 border-t border-border-gray">

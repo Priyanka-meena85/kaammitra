@@ -6,10 +6,9 @@ const Footer = () => {
     <footer className="bg-gray-900 text-white pt-12 pb-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-4 gap-8">
         <div>
-          <h3 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
-            <span className="bg-primary text-white p-1 rounded-lg text-lg">K</span>
-            KaamMitra
-          </h3>
+          <Link to="/" className="flex items-center mb-4">
+            <img src="/logo.png" alt="KaamMitra Logo" className="h-10 w-auto bg-white rounded p-1 object-contain" />
+          </Link>
           <p className="text-border-gray mb-4">
             Find verified nearby workers for home, shop, and business services easily by voice, call, or simple booking.
           </p>

@@ -1,5 +1,5 @@
 import { createContext, useState, useEffect, useContext } from 'react';
-import axios from 'axios';
+import api from '../utils/api';
 
 const AuthContext = createContext();
 
@@ -12,7 +12,7 @@ export const AuthProvider = ({ children }) => {
     useEffect(() => {
         const token = localStorage.getItem('token');
         if (token) {
-            axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+            api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
             fetchUser();
         } else {
             setLoading(false);
@@ -21,8 +21,12 @@ export const AuthProvider = ({ children }) => {
 
     const fetchUser = async () => {
         try {
-            const res = await axios.get('http://localhost:5000/api/v1/auth/me');
-            setUser(res.data.data);
+            if (import.meta.env.DEV && import.meta.env.VITE_ENABLE_DEMO_DATA === 'true' && localStorage.getItem('token') === 'dummy_token') {
+                setUser({ id: 'demo123', name: 'Demo User', role: 'customer' });
+            } else {
+                const res = await api.get('/auth/me');
+                setUser(res.data.data);
+            }
         } catch (error) {
             console.error('Error fetching user', error);
             localStorage.removeItem('token');
@@ -33,19 +37,19 @@ export const AuthProvider = ({ children }) => {
 
     const login = (userData, token) => {
         localStorage.setItem('token', token);
-        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
         setUser(userData);
     };
 
     const register = (userData, token) => {
         localStorage.setItem('token', token);
-        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
         setUser(userData);
     };
 
     const logout = () => {
         localStorage.removeItem('token');
-        delete axios.defaults.headers.common['Authorization'];
+        delete api.defaults.headers.common['Authorization'];
         setUser(null);
     };
 
