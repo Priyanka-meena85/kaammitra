@@ -99,8 +99,8 @@ const WorkerProfile = () => {
     try {
       await api.post('/leads', { workerId: worker._id || id, customerId: user?._id || null, workerName: name, workerPhone: worker.phone, service: service, source: 'whatsapp', pageSource: 'worker-profile' });
     } catch(e) {}
-    const msg = encodeURIComponent(`Namaste, mujhe ${service} service chahiye. Kya aap available hain?`);
-    window.location.href = `https://wa.me/91${worker.phone}?text=${msg}`;
+    const msg = encodeURIComponent(`Hi, I saw your profile on KaamMitra. I need help with ${service}.`);
+    window.open(`https://wa.me/91${worker.phone}?text=${msg}`, '_blank');
   };
 
   const handleListen = () => {

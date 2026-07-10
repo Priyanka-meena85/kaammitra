@@ -31,8 +31,8 @@ const WorkerCard = ({ worker }) => {
     try {
       await api.post('/leads', { workerId: worker._id || worker.id, customerId: user?._id || null, workerName: worker.name, workerPhone: worker.phone, service: worker.service || worker.services?.[0], source: 'whatsapp', pageSource: 'worker-card' });
     } catch(e) {}
-    const msg = encodeURIComponent(`Namaste, mujhe ${worker.service || 'service'} chahiye. Kya aap available hain?`);
-    window.location.href = `https://wa.me/91${worker.phone}?text=${msg}`;
+    const msg = encodeURIComponent(`Namaste, mujhe ${worker.service || worker.services?.[0]} service chahiye. Kya aap available hain?`);
+    window.open(`https://wa.me/91${worker.phone}?text=${msg}`, '_blank');
   };
 
   const handleListen = (e) => {
