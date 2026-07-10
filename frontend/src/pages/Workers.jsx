@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { Filter, Search, MapPin } from 'lucide-react';
+import { Filter, Search, MapPin, AlertTriangle } from 'lucide-react';
 import WorkerCard from '../components/WorkerCard';
 import { workers as dummyWorkers } from '../data/workers';
 import { services } from '../data/services';

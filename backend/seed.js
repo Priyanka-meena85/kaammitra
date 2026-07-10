@@ -9,9 +9,9 @@ const bcrypt = require('bcryptjs');
 
 dotenv.config();
 
-const importData = async () => {
+const importData = async (shouldConnect = true) => {
   try {
-    await connectDB();
+    if (shouldConnect) await connectDB();
 
     // Clear db
     await Service.deleteMany();
@@ -79,11 +79,15 @@ const importData = async () => {
     await Worker.insertMany(workers);
 
     console.log('Data Imported!');
-    process.exit();
+    if (require.main === module) process.exit();
   } catch (err) {
     console.error(`Error: ${err.message}`);
-    process.exit(1);
+    if (require.main === module) process.exit(1);
   }
 };
 
-importData();
+if (require.main === module) {
+    importData();
+}
+
+module.exports = importData;

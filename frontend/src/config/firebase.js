@@ -11,15 +11,21 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+let app = null;
+let auth = null;
+let analytics = null;
 
-// Initialize Firebase Authentication and get a reference to the service
-const auth = getAuth(app);
+if (firebaseConfig.apiKey) {
+  // Initialize Firebase
+  app = initializeApp(firebaseConfig);
+  // Initialize Firebase Authentication and get a reference to the service
+  auth = getAuth(app);
+} else {
+  console.warn("Firebase API Key is missing. Firebase features will be disabled.");
+}
 
 // Optionally initialize Analytics if needed and in browser environment
-let analytics = null;
-if (typeof window !== 'undefined' && firebaseConfig.measurementId) {
+if (app && typeof window !== 'undefined' && firebaseConfig.measurementId) {
     import('firebase/analytics').then(({ getAnalytics, isSupported }) => {
         isSupported().then(yes => {
             if (yes) analytics = getAnalytics(app);

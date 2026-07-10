@@ -23,7 +23,7 @@ const connectDB = async () => {
             console.log('Seeding memory database for QA testing...');
             try {
                 const seedFunc = require('../seed');
-                if (typeof seedFunc === 'function') await seedFunc();
+                if (typeof seedFunc === 'function') await seedFunc(false);
             } catch(e) {
                 console.log('Seed function not found or failed. Continuing empty.');
             }
