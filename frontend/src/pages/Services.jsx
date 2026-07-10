@@ -167,13 +167,13 @@ const Services = () => {
           
           <div className="flex flex-col sm:flex-row justify-center gap-4">
             <a 
-              href="tel:+919999999999"
+              href="tel:+918503996575"
               className="flex items-center justify-center gap-3 bg-primary hover:bg-primary-hover text-white px-8 py-4 rounded-xl font-bold text-lg shadow-lg transition-all"
             >
               <Phone size={24} /> Call Support
             </a>
             <a 
-              href="https://wa.me/919999999999?text=Hi,%20I%20need%20help%20finding%20a%20service."
+              href="https://wa.me/918503996575?text=Hi,%20I%20need%20help%20finding%20a%20service."
               target="_blank"
               rel="noreferrer"
               className="flex items-center justify-center gap-3 bg-accent-green hover:bg-accent-green text-white px-8 py-4 rounded-xl font-bold text-lg shadow-lg transition-all"

@@ -54,9 +54,9 @@ const Emergency = () => {
     if (!formData.service) return toast.error('Select a service first');
     
     if (type === 'call') {
-      window.open('tel:18001234567', '_self');
-    } else {
-      window.open('https://wa.me/919876543210?text=I%20need%20emergency%20help%20for%20' + formData.service, '_blank');
+      window.open('tel:+918503996575', '_self');
+    } else if (type === 'wa') {
+      window.open('https://wa.me/918503996575?text=I%20need%20emergency%20help%20for%20' + formData.service, '_blank');
     }
   };
 
