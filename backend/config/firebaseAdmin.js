@@ -29,9 +29,23 @@ if (missingVariables.length > 0) {
   console.error(firebaseInitializationError);
 } else {
   try {
-    const normalizedPrivateKey = privateKey
-      .replace(/^"(.*)"$/s, "$1")
-      .replace(/\\n/g, "\n")
+    let rawKey = privateKey.trim();
+    
+    // If the user accidentally pasted the ENTIRE JSON file into the private key field:
+    if (rawKey.startsWith("{") && rawKey.endsWith("}")) {
+      try {
+        const parsedJson = JSON.parse(rawKey);
+        if (parsedJson.private_key) {
+          rawKey = parsedJson.private_key;
+        }
+      } catch (e) {
+        // Ignore JSON parse error and try normal processing
+      }
+    }
+
+    const normalizedPrivateKey = rawKey
+      .replace(/^"(.*)"$/s, "$1") // Remove surrounding quotes if they copied with quotes
+      .replace(/\\n/g, "\n")       // Convert literal \n to actual newlines
       .trim();
 
     if (
