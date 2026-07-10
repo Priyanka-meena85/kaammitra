@@ -1,10 +1,11 @@
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
-const API_URL = import.meta.env.VITE_API_URL?.replace(/\/+$/, "");
+let API_URL = import.meta.env.VITE_API_URL?.replace(/\/+$/, "");
 
-if (!API_URL) {
-  throw new Error("VITE_API_URL is not configured");
+// Force the correct Render URL with /api/v1 if the env var is missing, malformed, or just the base domain
+if (!API_URL || API_URL === "https://kaammitra-1.onrender.com" || API_URL.includes("ENABLE_DEMO")) {
+  API_URL = "https://kaammitra-1.onrender.com/api/v1";
 }
 
 const api = axios.create({
