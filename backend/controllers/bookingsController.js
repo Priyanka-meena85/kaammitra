@@ -115,6 +115,34 @@ exports.updateBookingStatus = async (req, res) => {
         booking.statusUpdatedAt = new Date();
         await booking.save();
 
+        // Update wallet on completion
+        if (status === 'Completed' && booking.workerId) {
+            const WorkerWallet = require('../models/WorkerWallet');
+            const wallet = await WorkerWallet.findOne({ workerId: booking.workerId });
+            if (wallet) {
+                // Find all earnings for this booking in pending balance
+                const pendingTransactions = wallet.transactions.filter(t => 
+                    t.type === 'earning' && 
+                    t.bookingId && 
+                    t.bookingId.toString() === booking._id.toString()
+                );
+                
+                let earningAmount = 0;
+                for (const tx of pendingTransactions) {
+                    earningAmount += tx.amount;
+                }
+
+                if (earningAmount > 0) {
+                    wallet.pendingBalance -= earningAmount;
+                    wallet.availableBalance += earningAmount;
+                    wallet.totalEarnings += earningAmount;
+                    // Note: We don't need a new transaction log for just moving from pending to available,
+                    // but we could add one if desired. Earning was already logged.
+                    await wallet.save();
+                }
+            }
+        }
+
         // Emit live update via Socket.io
         const socketConfig = require('../socket');
         const io = socketConfig.getIo();

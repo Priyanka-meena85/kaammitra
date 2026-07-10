@@ -42,6 +42,34 @@ const BookingSchema = new mongoose.Schema({
     },
     statusUpdatedAt: {
         type: Date
+    },
+    paymentStatus: {
+        type: String,
+        enum: ["unpaid", "advance_paid", "paid", "failed", "refunded"],
+        default: "unpaid"
+    },
+    paymentMode: {
+        type: String,
+        enum: ["cash", "online", "mixed"],
+        default: "cash"
+    },
+    totalAmount: {
+        type: Number
+    },
+    advanceAmount: {
+        type: Number
+    },
+    remainingAmount: {
+        type: Number
+    },
+    paymentId: {
+        type: mongoose.Schema.ObjectId,
+        ref: 'Payment'
+    },
+    commissionStatus: {
+        type: String,
+        enum: ["not_applicable", "pending", "calculated", "settled"],
+        default: "not_applicable"
     }
 }, {
     timestamps: true

@@ -6,6 +6,7 @@ import api from '../utils/api';
 import toast from 'react-hot-toast';
 import EmptyState from '../components/EmptyState';
 import { extractArray } from '../utils/apiResponse';
+import { getAdminPayouts, updatePayoutStatus } from '../api/paymentApi';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -23,6 +24,7 @@ const AdminDashboard = () => {
   const [areaRequests, setAreaRequests] = useState([]);
   const [complaints, setComplaints] = useState([]);
   const [bookings, setBookings] = useState([]);
+  const [payouts, setPayouts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [apiError, setApiError] = useState(null);
   const [activeTab, setActiveTab] = useState('workers'); // workers, callbacks, areas, complaints, bookings
@@ -34,12 +36,13 @@ const AdminDashboard = () => {
         const statsRes = await api.get('/admin/stats');
         setStats(statsRes.data.data);
         
-        const [workersRes, callbacksRes, areasRes, complaintsRes, bookingsRes] = await Promise.all([
+        const [workersRes, callbacksRes, areasRes, complaintsRes, bookingsRes, payoutsRes] = await Promise.all([
            api.get('/admin/workers'),
            api.get('/callback-requests'),
            api.get('/areas/launch'),
            api.get('/admin/complaints'),
-           api.get('/admin/bookings')
+           api.get('/admin/bookings'),
+           getAdminPayouts()
         ]);
         
         setPendingWorkers(extractArray(workersRes, ["workers"]).filter(w => w.verificationStatus === 'Pending Verification' || !w.isVerified));
@@ -47,6 +50,7 @@ const AdminDashboard = () => {
         setAreaRequests(extractArray(areasRes, ["areas"]));
         setComplaints(extractArray(complaintsRes, ["complaints"]));
         setBookings(extractArray(bookingsRes, ["bookings"]));
+        setPayouts(payoutsRes?.data || []);
 
       } catch (err) {
         console.error('Failed to load admin data', err);
@@ -112,6 +116,25 @@ const AdminDashboard = () => {
         toast.success(`Area request status updated to ${status}`);
     } catch (err) {
         toast.error('Failed to update area request');
+    }
+  };
+
+  const handlePayoutResolve = async (id, status) => {
+    const txRef = status === 'paid' ? prompt('Enter Bank UTR / Transaction ID (Optional):') : '';
+    const note = status === 'rejected' ? prompt('Enter reason for rejection:') : '';
+    
+    if (status === 'rejected' && !note) return toast.error('Rejection reason required');
+
+    try {
+      await updatePayoutStatus(id, {
+        status,
+        transactionReference: txRef,
+        adminNote: note
+      });
+      toast.success(`Payout marked as ${status}`);
+      setPayouts(prev => prev.map(p => p._id === id ? { ...p, status, transactionReference: txRef, adminNote: note } : p));
+    } catch (err) {
+      toast.error('Failed to update payout');
     }
   };
 
@@ -188,6 +211,12 @@ const AdminDashboard = () => {
                 className={`px-6 py-4 font-bold text-sm md:text-base transition ${activeTab === 'workers' ? 'bg-white border-b-2 border-primary text-primary' : 'text-gray-500 hover:text-navy'}`}
             >
                 Pending Workers ({(Array.isArray(pendingWorkers) ? pendingWorkers : []).length})
+            </button>
+            <button 
+                onClick={() => setActiveTab('payouts')} 
+                className={`px-6 py-4 font-bold text-sm md:text-base transition ${activeTab === 'payouts' ? 'bg-white border-b-2 border-primary text-primary' : 'text-gray-500 hover:text-navy'}`}
+            >
+                Payouts ({(Array.isArray(payouts) ? payouts : []).filter(p => p.status === 'pending').length})
             </button>
             <button 
                 onClick={() => setActiveTab('complaints')} 
@@ -337,6 +366,38 @@ const AdminDashboard = () => {
                             <div className="mt-4 md:mt-0 flex gap-2">
                                 {a.status === 'New' && <button onClick={() => handleAreaStatus(a._id, 'Reviewing')} className="bg-primary text-white px-4 py-2 rounded-lg font-bold text-sm">Mark Reviewing</button>}
                                 {a.status === 'Reviewing' && <button onClick={() => handleAreaStatus(a._id, 'Approved')} className="bg-accent-green text-white px-4 py-2 rounded-lg font-bold text-sm">Mark Approved</button>}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {/* Payouts Tab */}
+            {activeTab === 'payouts' && (
+                <div className="space-y-4">
+                    {(Array.isArray(payouts) ? payouts : []).length === 0 && <EmptyState message="No payout requests found." />}
+                    {(Array.isArray(payouts) ? payouts : []).map(p => (
+                        <div key={p._id} className="flex flex-col md:flex-row justify-between items-start md:items-center p-4 border border-border-gray rounded-xl bg-gray-50 gap-4">
+                            <div>
+                                <p className="font-bold text-navy">Worker: {p.workerId?.name} ({p.workerId?.phone})</p>
+                                <p className="text-lg font-bold text-green-600">Amount: ₹{p.amount}</p>
+                                <div className="mt-2 text-sm text-text-gray bg-white p-3 rounded border border-border-gray">
+                                    <p><span className="font-medium">Acc Holder:</span> {p.bankDetailsSnapshot?.accountHolderName}</p>
+                                    <p><span className="font-medium">Acc No:</span> {p.bankDetailsSnapshot?.accountNumberMasked || 'N/A'}</p>
+                                    <p><span className="font-medium">IFSC:</span> {p.bankDetailsSnapshot?.ifscMasked || p.bankDetailsSnapshot?.ifsc || 'N/A'}</p>
+                                    <p><span className="font-medium">UPI:</span> {p.bankDetailsSnapshot?.upiIdMasked || 'N/A'}</p>
+                                </div>
+                                <p className="text-xs text-primary font-bold mt-2">Status: {p.status}</p>
+                                {p.transactionReference && <p className="text-xs text-text-gray mt-1">Tx: {p.transactionReference}</p>}
+                                {p.adminNote && <p className="text-xs text-red-500 mt-1">Note: {p.adminNote}</p>}
+                            </div>
+                            <div className="flex gap-2 shrink-0">
+                                {p.status === 'pending' && (
+                                    <>
+                                        <button onClick={() => handlePayoutResolve(p._id, 'paid')} className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-bold text-sm shadow-sm transition">Mark Paid</button>
+                                        <button onClick={() => handlePayoutResolve(p._id, 'rejected')} className="bg-red-100 hover:bg-red-200 text-red-700 px-4 py-2 rounded-lg font-bold text-sm transition">Reject</button>
+                                    </>
+                                )}
                             </div>
                         </div>
                     ))}

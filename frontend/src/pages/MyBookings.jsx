@@ -60,6 +60,66 @@ const MyBookings = () => {
     }
   };
 
+  const handlePayment = async (bookingId, paymentType, amount) => {
+    try {
+      const { loadRazorpayScript } = await import('../utils/loadRazorpay');
+      const { createPaymentOrder, verifyPayment } = await import('../api/paymentApi');
+      
+      const isLoaded = await loadRazorpayScript();
+      if (!isLoaded) {
+        toast.error('Failed to load payment gateway');
+        return;
+      }
+
+      const orderData = await createPaymentOrder(bookingId, paymentType, amount);
+
+      const options = {
+        key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_placeholder',
+        amount: orderData.order.amount,
+        currency: "INR",
+        name: "KaamMitra",
+        description: "Booking Payment",
+        order_id: orderData.order.id,
+        handler: async function (response) {
+          try {
+            await verifyPayment({
+              bookingId,
+              paymentRecordId: orderData.paymentId,
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature
+            });
+            toast.success('Payment successful!');
+            // Update local state
+            setBookings(prev => prev.map(b => {
+              if (b._id === bookingId) {
+                if (paymentType === 'advance') {
+                  return { ...b, paymentStatus: 'advance_paid', advanceAmount: (b.advanceAmount || 0) + amount };
+                } else {
+                  return { ...b, paymentStatus: 'paid' };
+                }
+              }
+              return b;
+            }));
+          } catch (err) {
+            toast.error('Payment verification failed.');
+          }
+        },
+        prefill: { name: user?.name, contact: user?.phone },
+        theme: { color: "#315D9C" }
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.on('payment.failed', function (response) {
+        toast.error(response.error.description || 'Payment failed');
+      });
+      rzp.open();
+    } catch (err) {
+      toast.error('Could not initiate payment');
+      console.error(err);
+    }
+  };
+
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold text-navy mb-8">My Bookings</h1>
@@ -87,6 +147,12 @@ const MyBookings = () => {
                   {booking.urgency === 'Urgent' && (
                     <span className="px-3 py-1 rounded-full text-xs font-bold bg-accent-orange/20 text-accent-orange-hover">Urgent</span>
                   )}
+                  {booking.paymentStatus === 'paid' && (
+                    <span className="px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800">Paid</span>
+                  )}
+                  {booking.paymentStatus === 'advance_paid' && (
+                    <span className="px-3 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800">Advance Paid</span>
+                  )}
                 </div>
                 
                 <p className="text-text-gray mb-4 text-sm bg-bg-warm p-3 rounded-lg border border-border-gray">
@@ -110,6 +176,12 @@ const MyBookings = () => {
                     <MapPin size={16} className="text-border-gray" />
                     <span className="truncate">{booking.address}</span>
                   </div>
+                  {booking.totalAmount && (
+                    <div className="flex items-center gap-2 font-bold text-navy mt-2 col-span-2">
+                      Total: ₹{booking.totalAmount}
+                      {booking.advanceAmount > 0 && <span className="text-xs text-text-gray font-normal">(Adv: ₹{booking.advanceAmount})</span>}
+                    </div>
+                  )}
                 </div>
 
                 <div className="mt-4">
@@ -128,6 +200,25 @@ const MyBookings = () => {
                     </button>
                   </>
                 )}
+                
+                {user?.role === 'customer' && booking.totalAmount && (booking.paymentStatus === 'unpaid' || !booking.paymentStatus) && booking.status !== 'Cancelled' && (
+                   <button 
+                    onClick={() => handlePayment(booking._id, 'advance', Math.max(50, Math.round(booking.totalAmount * 0.2)))}
+                    className="w-full flex justify-center items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-medium transition-colors"
+                   >
+                     Pay Advance
+                   </button>
+                )}
+
+                {user?.role === 'customer' && booking.totalAmount && booking.paymentStatus === 'advance_paid' && booking.status !== 'Cancelled' && (
+                   <button 
+                    onClick={() => handlePayment(booking._id, 'remaining', booking.totalAmount - (booking.advanceAmount || 0))}
+                    className="w-full flex justify-center items-center gap-2 bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg font-medium transition-colors"
+                   >
+                     Pay Remaining
+                   </button>
+                )}
+
                 {booking.status === 'Completed' && (
                   <button className="w-full flex justify-center items-center gap-2 bg-yellow-50 hover:bg-yellow-100 text-yellow-700 py-2 rounded-lg font-medium transition-colors">
                     <Star size={18} /> Rate Worker

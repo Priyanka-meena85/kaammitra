@@ -61,6 +61,7 @@ app.use('/api/v1/auth', require('./routes/auth'));
 app.use('/api/v1/workers', require('./routes/workers'));
 app.use('/api/v1/services', require('./routes/services'));
 app.use('/api/v1/bookings', require('./routes/bookings'));
+app.use('/api/v1/payments', require('./routes/paymentRoutes'));
 app.use('/api/v1/chats', require('./routes/chats'));
 app.use('/api/v1/ratings', require('./routes/ratings'));
 app.use('/api/v1/complaints', require('./routes/complaints'));
