@@ -43,19 +43,39 @@ if (missingVariables.length > 0) {
       }
     }
 
-    const normalizedPrivateKey = rawKey
+    let normalizedPrivateKey = rawKey
       .replace(/^"(.*)"$/s, "$1") // Remove surrounding quotes if they copied with quotes
       .replace(/\\n/g, "\n")       // Convert literal \n to actual newlines
       .trim();
 
+    const beginStr = "-----BEGIN PRIVATE KEY-----";
+    const endStr = "-----END PRIVATE KEY-----";
+
     if (
-      !normalizedPrivateKey.includes("-----BEGIN PRIVATE KEY-----") ||
-      !normalizedPrivateKey.includes("-----END PRIVATE KEY-----")
+      !normalizedPrivateKey.includes(beginStr) ||
+      !normalizedPrivateKey.includes(endStr)
     ) {
       throw new Error(
         "FIREBASE_PRIVATE_KEY does not contain a valid PEM private key"
       );
     }
+
+    // Absolutely foolproof PEM reconstruction:
+    // Extract everything between the headers, strip ALL whitespace, and rebuild it.
+    let base64Payload = normalizedPrivateKey
+      .substring(
+        normalizedPrivateKey.indexOf(beginStr) + beginStr.length,
+        normalizedPrivateKey.indexOf(endStr)
+      )
+      .replace(/\s+/g, ""); // Remove all spaces, tabs, and newlines
+
+    // Break into 64-character chunks (standard PEM format)
+    const chunks = [];
+    for (let i = 0; i < base64Payload.length; i += 64) {
+      chunks.push(base64Payload.substring(i, i + 64));
+    }
+
+    normalizedPrivateKey = `${beginStr}\n${chunks.join("\n")}\n${endStr}\n`;
 
     const firebaseApp =
       getApps().length > 0
