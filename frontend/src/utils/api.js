@@ -41,11 +41,8 @@ api.interceptors.response.use(
       toast.error('Server is waking up. Please wait 30 seconds and try again.', { id: 'waking-up-toast' });
     } else if (error.response.status === 401) {
       localStorage.removeItem('token');
-      // If we are not on login page, redirect and notify
-      if (window.location.pathname !== '/login') {
-        toast.error('Session expired. Please login again.');
-        window.location.href = '/login';
-      }
+      // Dispatch event instead of hard redirect
+      window.dispatchEvent(new Event('auth:unauthorized'));
     } else if (error.response.status === 500) {
       toast.error('Server error. Please try again later.');
     }

@@ -75,10 +75,12 @@ exports.register = async (req, res) => {
         const phoneE164 = `+91${phone10}`;
         const phoneLookup = [phone10, phoneE164, rawPhone];
 
-        // Check for duplicates by firebaseUid first, then by phone variants
-        let existingUser = await Customer.findOne({ $or: [{ firebaseUid: uid }, { phone: { $in: phoneLookup } }] });
-        if (!existingUser) {
+        let existingUser = null;
+
+        if (role === 'worker') {
             existingUser = await Worker.findOne({ $or: [{ firebaseUid: uid }, { phone: { $in: phoneLookup } }] });
+        } else {
+            existingUser = await Customer.findOne({ $or: [{ firebaseUid: uid }, { phone: { $in: phoneLookup } }] });
         }
         
         if (existingUser) {
@@ -89,7 +91,8 @@ exports.register = async (req, res) => {
                 existingUser.phone = phoneE164;
                 await existingUser.save();
             }
-            return res.status(400).json({ success: false, error: 'Phone number already registered. Please login.' });
+            const roleName = role === 'worker' ? 'Worker' : 'Customer';
+            return res.status(400).json({ success: false, error: `${roleName} account already exists. Please login as ${role}.` });
         }
 
         if (role === 'worker') {
@@ -202,11 +205,12 @@ exports.firebaseLogin = async (req, res) => {
         }
 
         const variants = getPhoneVariants(phone_number);
+        const { role } = req.body;
 
         let account = null;
         let accountType = null;
 
-        if (Customer) {
+        if (role === 'customer' || !role) {
             account = await Customer.findOne({
                 $or: [
                     { firebaseUid: uid },
@@ -216,7 +220,7 @@ exports.firebaseLogin = async (req, res) => {
             if (account) accountType = "customer";
         }
 
-        if (!account && Worker) {
+        if (!account && (role === 'worker' || !role)) {
             account = await Worker.findOne({
                 $or: [
                     { firebaseUid: uid },
@@ -226,7 +230,7 @@ exports.firebaseLogin = async (req, res) => {
             if (account) accountType = "worker";
         }
         
-        if (!account && Admin) {
+        if (!account && (role === 'admin' || !role)) {
             account = await Admin.findOne({
                 $or: [
                     { username: { $in: variants } }

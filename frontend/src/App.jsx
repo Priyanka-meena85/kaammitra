@@ -1,7 +1,9 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
+import { useAuth } from './context/AuthContext';
+import toast from 'react-hot-toast';
 
 // Pages
 import Home from './pages/Home';
@@ -26,9 +28,31 @@ import WorkerDashboard from './pages/WorkerDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import { Toaster } from 'react-hot-toast';
 
+// AuthInterceptor component to handle navigation
+const AuthInterceptor = () => {
+  const navigate = useNavigate();
+  const { logout } = useAuth();
+
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      logout();
+      if (window.location.pathname !== '/login' && window.location.pathname !== '/register' && window.location.pathname !== '/worker-register') {
+        toast.error('Session expired. Please login again.', { id: 'session-expired' });
+        navigate('/login', { replace: true });
+      }
+    };
+
+    window.addEventListener('auth:unauthorized', handleUnauthorized);
+    return () => window.removeEventListener('auth:unauthorized', handleUnauthorized);
+  }, [navigate, logout]);
+
+  return null;
+};
+
 function App() {
   return (
     <Router>
+      <AuthInterceptor />
       <div className="flex flex-col min-h-screen bg-bg-warm">
         <Toaster position="top-center" />
         <Navbar />
