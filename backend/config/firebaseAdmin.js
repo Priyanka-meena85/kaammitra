@@ -54,7 +54,7 @@ const normalizePrivateKey = (value = "") => {
       chunks.push(base64Payload.substring(i, i + 64));
     }
 
-    key = `${beginStr}\n${chunks.join("\n")}\n${endStr}\n`;
+    key = `${beginStr}\n${chunks.join("\n")}\n${endStr}`;
   }
 
   return key;
