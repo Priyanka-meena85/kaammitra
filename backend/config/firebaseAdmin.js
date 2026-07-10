@@ -11,13 +11,17 @@ if (!projectId || !clientEmail || !privateKey) {
 }
 
 if (!(admin.apps && admin.apps.length) && projectId && clientEmail && privateKey) {
-  admin.initializeApp({
-    credential: admin.credential.cert({
-      projectId,
-      clientEmail,
-      privateKey: privateKey.replace(/\\n/g, "\n"),
-    }),
-  });
+  try {
+    admin.initializeApp({
+      credential: admin.credential.cert({
+        projectId,
+        clientEmail,
+        privateKey: privateKey.replace(/\\n/g, "\n"),
+      }),
+    });
+  } catch (error) {
+    console.error("Firebase Admin Initialization Error:", error.message);
+  }
 }
 
 module.exports = admin;
