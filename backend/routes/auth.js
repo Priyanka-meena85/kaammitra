@@ -1,5 +1,5 @@
 const express = require('express');
-const { register, login, getMe, firebaseLogin } = require('../controllers/authController');
+const { register, login, getMe, firebaseLogin, firebaseStatus } = require('../controllers/authController');
 const { protect } = require('../middlewares/auth');
 
 const router = express.Router();
@@ -11,17 +11,6 @@ router.post('/login', login); // Keep it if email/pass exists, or old login
 router.post('/firebase-login', firebaseLogin);
 router.get('/me', protect, getMe);
 
-router.get('/firebase-status', (req, res) => {
-    if (firebaseAuth) {
-        res.status(200).json({ success: true, firebaseConfigured: true });
-    } else {
-        res.status(200).json({ 
-            success: false, 
-            firebaseConfigured: false, 
-            message: "Firebase Admin is not configured",
-            errorDetails: firebaseInitializationError || "Unknown error"
-        });
-    }
-});
+router.get('/firebase-status', firebaseStatus);
 
 module.exports = router;

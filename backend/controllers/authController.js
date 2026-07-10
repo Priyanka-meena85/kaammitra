@@ -274,3 +274,25 @@ exports.firebaseLogin = async (req, res) => {
         res.status(500).json({ success: false, message: 'Server error during login' });
     }
 };
+
+// @desc    Firebase Status
+// @route   GET /api/v1/auth/firebase-status
+// @access  Public
+exports.firebaseStatus = (req, res) => {
+  if (!firebaseAuth) {
+    return res.status(503).json({
+      success: false,
+      firebaseConfigured: false,
+      message: "Firebase Admin is not configured",
+      errorDetails:
+        process.env.NODE_ENV !== "production"
+          ? require('../config/firebaseAdmin').firebaseInitializationError
+          : undefined,
+    });
+  }
+
+  return res.status(200).json({
+    success: true,
+    firebaseConfigured: true,
+  });
+};
