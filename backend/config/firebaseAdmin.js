@@ -36,7 +36,28 @@ const normalizePrivateKey = (value = "") => {
   // Remove CRLF issues.
   key = key.replace(/\r/g, "");
 
-  return key.trim();
+  key = key.trim();
+
+  // Absolutely foolproof PEM reconstruction if spaces replaced newlines:
+  const beginStr = "-----BEGIN PRIVATE KEY-----";
+  const endStr = "-----END PRIVATE KEY-----";
+
+  if (key.includes(beginStr) && key.includes(endStr)) {
+    // Extract base64 payload and strip ALL whitespace (including rogue spaces)
+    let base64Payload = key
+      .substring(key.indexOf(beginStr) + beginStr.length, key.indexOf(endStr))
+      .replace(/\s+/g, "");
+
+    // Break into 64-character chunks
+    const chunks = [];
+    for (let i = 0; i < base64Payload.length; i += 64) {
+      chunks.push(base64Payload.substring(i, i + 64));
+    }
+
+    key = `${beginStr}\n${chunks.join("\n")}\n${endStr}\n`;
+  }
+
+  return key;
 };
 
 try {
