@@ -1,13 +1,48 @@
 const mongoose = require('mongoose');
 
-const chatSchema = new mongoose.Schema({
-  conversationId: { type: String, required: true },
-  senderId: { type: mongoose.Schema.Types.ObjectId, required: true },
-  receiverId: { type: mongoose.Schema.Types.ObjectId, required: true },
-  senderRole: { type: String, enum: ['Customer', 'Worker'], required: true },
-  message: { type: String, required: true },
-  isRead: { type: Boolean, default: false },
-  timestamp: { type: Date, default: Date.now }
+const MessageSchema = new mongoose.Schema({
+    senderId: {
+        type: mongoose.Schema.ObjectId,
+        required: true
+    },
+    senderRole: {
+        type: String,
+        enum: ['customer', 'worker', 'admin'],
+        required: true
+    },
+    text: {
+        type: String,
+        required: true
+    },
+    read: {
+        type: Boolean,
+        default: false
+    },
+    createdAt: {
+        type: Date,
+        default: Date.now
+    }
 });
 
-module.exports = mongoose.model('Chat', chatSchema);
+const ChatSchema = new mongoose.Schema({
+    conversationId: {
+        type: String,
+        required: true,
+        unique: true
+    },
+    customerId: {
+        type: mongoose.Schema.ObjectId,
+        ref: 'Customer',
+        required: true
+    },
+    workerId: {
+        type: mongoose.Schema.ObjectId,
+        ref: 'Worker',
+        required: true
+    },
+    messages: [MessageSchema]
+}, {
+    timestamps: true
+});
+
+module.exports = mongoose.model('Chat', ChatSchema);

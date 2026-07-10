@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, Phone, MapPin, Zap, MessageCircle } from 'lucide-react';
 import { getUserLocation } from '../utils/location';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
+import WorkerCard from '../components/WorkerCard';
+import { extractArray } from '../utils/apiResponse';
 
 const Emergency = () => {
   const navigate = useNavigate();
@@ -15,6 +17,29 @@ const Emergency = () => {
   const [location, setLocation] = useState(null);
   const [address, setAddress] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [emergencyWorkers, setEmergencyWorkers] = useState([]);
+  const [loadingWorkers, setLoadingWorkers] = useState(false);
+
+  useEffect(() => {
+    const fetchEmergencyWorkers = async () => {
+      setLoadingWorkers(true);
+      try {
+        const url = `/workers/emergency-match?service=${encodeURIComponent(formData.service)}`;
+        // If we have location/area we could pass it here to match closer, but let's just pass service for now
+        const res = await api.get(url);
+        const data = res.data?.data || extractArray(res, ["workers"]) || [];
+        setEmergencyWorkers(data);
+      } catch (err) {
+        console.error('Failed to fetch emergency workers', err);
+        setEmergencyWorkers([]);
+      } finally {
+        setLoadingWorkers(false);
+      }
+    };
+    
+    // Throttle or debounce if needed, but simple dependency on service works for radio buttons
+    fetchEmergencyWorkers();
+  }, [formData.service]);
 
   const handleLocation = async () => {
     try {
@@ -143,6 +168,29 @@ const Emergency = () => {
 
         </form>
       </div>
+
+      <div className="mt-8">
+        <h2 className="text-2xl font-bold text-navy mb-4">Top Emergency {formData.service}s Near You</h2>
+        {loadingWorkers ? (
+          <div className="text-center py-10 text-text-gray">Finding best emergency workers...</div>
+        ) : emergencyWorkers.length === 0 ? (
+          <div className="bg-card-white rounded-2xl shadow-sm border border-border-gray p-8 text-center text-text-gray">
+            No active emergency workers found right now. Please request above and we'll dispatch someone.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-4">
+            {emergencyWorkers.map((item, index) => (
+              <WorkerCard 
+                key={item.worker?._id || item.worker?.id || index} 
+                worker={item.worker || item}
+                matchScore={item.matchScore}
+                matchReason={item.matchReason}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
     </div>
   );
 };

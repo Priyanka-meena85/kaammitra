@@ -110,19 +110,64 @@ const Home = () => {
                 Find verified nearby workers for home, shop and business services by voice, call, WhatsApp or simple booking.
               </p>
               
-              <div className="mb-8 max-w-sm">
-                <label className="block text-sm font-bold text-navy mb-2">Select your city</label>
-                <select 
-                  value={selectedCity} 
-                  onChange={handleCityChange}
-                  className="w-full px-4 py-3 rounded-xl border border-border-gray shadow-sm focus:ring-2 focus:ring-primary focus:outline-none appearance-none bg-white text-lg font-medium text-navy"
-                >
-                  <option value="">All Cities</option>
-                  {[...new Set((Array.isArray(areas) ? areas : []).map(a => a.city))].map(city => (
-                    <option key={city} value={city}>{city}</option>
-                  ))}
-                  <option value="Other">Other City...</option>
-                </select>
+              <div className="mb-8 max-w-md bg-white p-6 rounded-2xl shadow-lg border border-border-gray">
+                <h3 className="text-xl font-bold text-navy mb-4">Find Best Worker</h3>
+                <form onSubmit={(e) => {
+                  e.preventDefault();
+                  const service = e.target.service.value;
+                  const city = selectedCity;
+                  const area = e.target.area.value;
+                  const urgency = e.target.urgency.value;
+                  const maxBudget = e.target.maxBudget.value;
+                  let url = `/workers?smart=true`;
+                  if (service) url += `&service=${encodeURIComponent(service)}`;
+                  if (city) url += `&city=${encodeURIComponent(city)}`;
+                  if (area) url += `&area=${encodeURIComponent(area)}`;
+                  if (urgency === 'emergency') url += `&urgency=emergency`;
+                  if (maxBudget) url += `&maxBudget=${encodeURIComponent(maxBudget)}`;
+                  navigate(url);
+                }} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-bold text-navy mb-1">What service do you need?</label>
+                    <input name="service" type="text" placeholder="e.g. Plumber, Electrician" className="w-full px-4 py-2 rounded-xl border border-border-gray focus:ring-2 focus:ring-primary focus:outline-none" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-bold text-navy mb-1">City</label>
+                      <select 
+                        value={selectedCity} 
+                        onChange={handleCityChange}
+                        className="w-full px-4 py-2 rounded-xl border border-border-gray focus:ring-2 focus:ring-primary focus:outline-none"
+                      >
+                        <option value="">All Cities</option>
+                        {[...new Set((Array.isArray(areas) ? areas : []).map(a => a.city))].map(city => (
+                          <option key={city} value={city}>{city}</option>
+                        ))}
+                        <option value="Other">Other...</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-navy mb-1">Area</label>
+                      <input name="area" type="text" placeholder="e.g. Vaishali Nagar" className="w-full px-4 py-2 rounded-xl border border-border-gray focus:ring-2 focus:ring-primary focus:outline-none" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-bold text-navy mb-1">Urgency</label>
+                      <select name="urgency" className="w-full px-4 py-2 rounded-xl border border-border-gray focus:ring-2 focus:ring-primary focus:outline-none">
+                        <option value="normal">Normal</option>
+                        <option value="emergency">Emergency</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-navy mb-1">Budget (₹)</label>
+                      <input name="maxBudget" type="number" placeholder="Optional" className="w-full px-4 py-2 rounded-xl border border-border-gray focus:ring-2 focus:ring-primary focus:outline-none" />
+                    </div>
+                  </div>
+                  <button type="submit" className="w-full bg-primary hover:bg-primary-hover text-white px-6 py-3 rounded-xl font-bold text-lg shadow-md transition-all">
+                    Find Best Match
+                  </button>
+                </form>
               </div>
 
               {showLaunchRequest && (
@@ -140,12 +185,6 @@ const Home = () => {
               
               {!showLaunchRequest && (
                 <div className="flex flex-wrap gap-4 mb-8">
-                  <button 
-                    onClick={() => navigate(`/workers${selectedCity ? `?city=${selectedCity}` : ''}`)}
-                    className="bg-primary hover:bg-primary-hover text-white px-6 py-3 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all"
-                  >
-                    Find Worker
-                  </button>
                   <button 
                     onClick={() => navigate('/worker-register')}
                     className="bg-card-white hover:bg-bg-warm text-primary border border-primary/30 px-6 py-3 rounded-xl font-bold text-lg shadow-sm hover:shadow-md transition-all"

@@ -1,14 +1,13 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Star, MapPin, Phone, MessageCircle, ShieldCheck, Clock, Zap } from 'lucide-react';
-import { calculateMatchingScore, getMatchingBadge } from '../utils/matchingScore';
 import { useSimpleMode } from '../context/SimpleModeContext';
 import { speakText } from '../utils/speech';
 import { Volume2 } from 'lucide-react';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 
-const WorkerCard = ({ worker }) => {
+const WorkerCard = ({ worker, matchScore, matchReason }) => {
   const { user } = useAuth();
   const { isSimpleMode } = useSimpleMode();
   
@@ -43,14 +42,17 @@ const WorkerCard = ({ worker }) => {
   const isVerified = worker.isVerified || worker.verificationStatus === 'Verified';
   const rating = worker.averageRating || worker.rating || 0;
   const jobs = worker.completedJobs || worker.jobs || 0;
-  
-  const score = calculateMatchingScore(worker);
-  const badge = getMatchingBadge(worker, score);
+  const responseTime = worker.responseTimeMinutes || worker.responseTime || null;
 
   return (
     <div className="bg-card-white rounded-3xl shadow-md border border-border-gray overflow-hidden hover:shadow-lg transition-all group relative">
       {/* Badges */}
       <div className="absolute top-4 right-4 flex flex-col items-end gap-2 z-10">
+        {matchScore && (
+          <span className="bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded-md shadow-sm border border-blue-700">
+            {matchScore}% Match
+          </span>
+        )}
         {worker.isAvailable ? (
           <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-1 rounded-md shadow-sm">Available Now</span>
         ) : (
@@ -87,12 +89,18 @@ const WorkerCard = ({ worker }) => {
               <MapPin size={14} className="text-border-gray" />
               <span>{worker.distance ? `${worker.distance} km away` : (worker.area || worker.address || 'Nearby')}</span>
             </div>
+            {responseTime && (
+              <div className="flex items-center gap-1 mt-1 text-xs text-green-600 font-medium">
+                <Clock size={12} />
+                <span>Usually responds in {responseTime} min</span>
+              </div>
+            )}
           </div>
         </div>
 
-        {badge && !isSimpleMode && (
+        {matchReason && !isSimpleMode && (
           <div className="mb-3 inline-block bg-blue-50 border border-blue-100 text-blue-700 text-xs font-bold px-2 py-1 rounded">
-            ✨ {badge}
+            ✨ {matchReason}
           </div>
         )}
 

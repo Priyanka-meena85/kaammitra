@@ -28,6 +28,18 @@ exports.createBooking = async (req, res) => {
         }
 
         const booking = await Booking.create(req.body);
+
+        // Emit live update via Socket.io
+        const socketConfig = require('../socket');
+        const io = socketConfig.getIo();
+        const onlineUsers = socketConfig.getOnlineUsers();
+        if (io && onlineUsers) {
+            const targetSocketId = onlineUsers.get(String(booking.workerId));
+            if (targetSocketId) {
+                io.to(targetSocketId).emit('new_booking_received', { bookingId: booking._id, customerId: booking.customerId });
+            }
+        }
+
         res.status(201).json({ success: true, data: booking });
     } catch (err) {
         res.status(400).json({ success: false, error: err.message });
@@ -103,7 +115,84 @@ exports.updateBookingStatus = async (req, res) => {
         booking.statusUpdatedAt = new Date();
         await booking.save();
 
+        // Emit live update via Socket.io
+        const socketConfig = require('../socket');
+        const io = socketConfig.getIo();
+        const onlineUsers = socketConfig.getOnlineUsers();
+        if (io && onlineUsers) {
+            // If worker updates status, notify customer
+            if (req.user.role === 'worker' || req.user.role === 'admin') {
+                const targetSocketId = onlineUsers.get(String(booking.customerId));
+                if (targetSocketId) {
+                    io.to(targetSocketId).emit('booking_status_updated', { bookingId: booking._id, status });
+                }
+            }
+            // If customer cancels, notify worker
+            if (req.user.role === 'customer' && status === 'Cancelled') {
+                const targetSocketId = onlineUsers.get(String(booking.workerId));
+                if (targetSocketId) {
+                    io.to(targetSocketId).emit('booking_status_updated', { bookingId: booking._id, status });
+                }
+            }
+        }
+
         res.status(200).json({ success: true, data: booking });
+    } catch (err) {
+        res.status(400).json({ success: false, error: err.message });
+    }
+};
+
+// @desc    Suggest workers for booking
+// @route   GET /api/v1/bookings/suggest-workers
+// @access  Public
+exports.suggestWorkers = async (req, res) => {
+    try {
+        const { service, city, area, preferredDate, preferredTime, urgency, maxBudget } = req.query;
+        
+        let query = { isBlocked: false, isAvailable: true };
+        if (service) {
+            query.$or = [
+                { services: { $in: [new RegExp(`^${service}$`, 'i')] } },
+                { skills: { $in: [new RegExp(`^${service}$`, 'i')] } }
+            ];
+        }
+        if (city && city !== 'All Cities') query.city = new RegExp(`^${city}$`, 'i');
+        if (area) query.area = new RegExp(`^${area}$`, 'i');
+        if (urgency === 'emergency') query.emergencyAvailable = true;
+
+        const workers = await require('../models/Worker').find(query);
+        const searchParams = { service, city, area, preferredTime, urgency, maxBudget };
+        const { calculateWorkerScore } = require('../utils/workerRanking');
+        
+        // Also check if they are already double-booked (simplified check)
+        const dateObj = preferredDate ? new Date(preferredDate) : null;
+        let startOfDay, endOfDay;
+        if (dateObj) {
+            startOfDay = new Date(dateObj.setHours(0, 0, 0, 0));
+            endOfDay = new Date(dateObj.setHours(23, 59, 59, 999));
+        }
+
+        let rankedWorkers = [];
+        for (const w of workers) {
+            // Check double booking if date & time are provided
+            if (dateObj && preferredTime) {
+                const existingBooking = await Booking.findOne({
+                    workerId: w._id,
+                    date: { $gte: startOfDay, $lte: endOfDay },
+                    time: preferredTime,
+                    status: { $in: ['Pending', 'Accepted', 'On the Way', 'In Progress'] }
+                });
+                if (existingBooking) continue; // Skip booked worker
+            }
+
+            const { score, breakdown, matchReason } = calculateWorkerScore(w, searchParams);
+            rankedWorkers.push({ worker: w, matchScore: score, matchBreakdown: breakdown, matchReason });
+        }
+
+        rankedWorkers.sort((a, b) => b.matchScore - a.matchScore);
+        const suggested = rankedWorkers.slice(0, 5); // Return top 5
+
+        res.status(200).json({ success: true, count: suggested.length, data: suggested });
     } catch (err) {
         res.status(400).json({ success: false, error: err.message });
     }

@@ -34,6 +34,8 @@ const Workers = () => {
 
   const [areas, setAreas] = useState([]);
 
+  const [sortBy, setSortBy] = useState('best-match');
+
   useEffect(() => {
     const fetchAreas = async () => {
       try {
@@ -50,16 +52,37 @@ const Workers = () => {
   useEffect(() => {
     const fetchWorkers = async () => {
       try {
-        const cityParam = searchParams.get('city');
-        const url = (cityParam && cityParam !== 'All Cities') ? `/workers?city=${cityParam}` : '/workers';
+        setLoading(true);
+        let url = '/workers';
+        
+        // Build query string for smart matching
+        const queryParams = new URLSearchParams();
+        if (sortBy === 'best-match') queryParams.append('smart', 'true');
+        if (selectedService || searchTerm) queryParams.append('service', selectedService || searchTerm);
+        if (selectedArea && selectedArea !== 'All') queryParams.append('city', selectedArea); // Usually city maps to area dropdown in old code
+        if (emergencyAvailableOnly) queryParams.append('urgency', 'emergency');
+        
+        const qStr = queryParams.toString();
+        if (qStr) url += `?${qStr}`;
+
         const res = await api.get(url);
-        const workersData = extractArray(res, ["workers"]);
-        if (workersData.length > 0) {
-          setAllWorkers(workersData);
+        // Smart match API returns an array of { worker, matchScore, matchBreakdown, matchReason } objects when smart=true
+        // Fallback for non-smart mode is just array of workers.
+        // We will store the full returned object in allWorkers if smart=true, else just wrap normal workers.
+        const returnedData = res.data?.data || extractArray(res, ["workers"]) || [];
+        
+        const normalizedWorkers = returnedData.map(item => {
+          if (item.worker) return item; // Already smart matched object
+          return { worker: item, matchScore: null, matchReason: null }; // Normal mode wrap
+        });
+
+        if (normalizedWorkers.length > 0) {
+          setAllWorkers(normalizedWorkers);
         } else {
           // If no workers from API, check demo mode
           if (import.meta.env.DEV && import.meta.env.VITE_ENABLE_DEMO_DATA === 'true') {
-            setAllWorkers(dummyWorkers);
+            const mappedDummies = dummyWorkers.map(w => ({ worker: w, matchScore: null, matchReason: null }));
+            setAllWorkers(mappedDummies);
             toast('Demo data shown because development fallback is enabled.', { icon: 'ℹ️' });
           } else {
             setAllWorkers([]);
@@ -68,7 +91,8 @@ const Workers = () => {
       } catch (err) {
         console.error('Failed to fetch workers', err);
         if (import.meta.env.DEV && import.meta.env.VITE_ENABLE_DEMO_DATA === 'true') {
-          setAllWorkers(dummyWorkers);
+          const mappedDummies = dummyWorkers.map(w => ({ worker: w, matchScore: null, matchReason: null }));
+          setAllWorkers(mappedDummies);
           toast('Demo data shown because development fallback is enabled.', { icon: 'ℹ️' });
         } else {
           setAllWorkers([]);
@@ -83,52 +107,31 @@ const Workers = () => {
       }
     };
     fetchWorkers();
-  }, [searchParams]);
+  }, [searchTerm, selectedService, selectedArea, sortBy, emergencyAvailableOnly]);
 
   useEffect(() => {
     let result = [...allWorkers];
 
-    // Search and Service Filter
-    const filterTerm = selectedService || searchTerm;
-    if (filterTerm) {
-      const lower = filterTerm.toLowerCase();
-      result = result.filter(w => 
-        (w.service && w.service.toLowerCase().includes(lower)) || 
-        (w.services && w.services.some(s => s.toLowerCase().includes(lower))) ||
-        (w.skills && w.skills.some(s => s.toLowerCase().includes(lower)))
-      );
+    // Local filters that might not be handled by backend yet or for fast client filtering
+    if (verifiedOnly) {
+      result = result.filter(item => item.worker.isVerified || item.worker.verificationStatus === 'Verified');
     }
-
-    // Area
-    if (selectedArea !== 'All') {
-        result = result.filter(w => w.area === selectedArea || w.city === selectedArea);
+    if (availableOnly) {
+      result = result.filter(item => item.worker.isAvailable);
     }
-
-    // Distance Filter
-    if (distanceFilter !== 'all') {
-      const maxDist = parseInt(distanceFilter);
-      result = result.filter(w => w.distance <= maxDist || w.maxTravelDistance <= maxDist);
-    }
-
-    // Verified
-    if (verifiedOnly) result = result.filter(w => w.isVerified || w.verificationStatus === 'Verified');
     
-    // Available
-    if (availableOnly) result = result.filter(w => w.isAvailable);
-
-    // Emergency
-    if (emergencyAvailableOnly) result = result.filter(w => w.emergencyAvailable);
-
-    // Smart Matching Sort
-    // We pass null for userLocation currently, could integrate GPS later
-    result.sort((a, b) => {
-        const scoreA = calculateMatchingScore(a, null, emergencyAvailableOnly);
-        const scoreB = calculateMatchingScore(b, null, emergencyAvailableOnly);
-        return scoreB - scoreA;
-    });
+    // Sort logic if not best-match (backend handles best-match)
+    if (sortBy === 'nearest') {
+      // Just sort by distance if available
+      result.sort((a, b) => (a.worker.distance || 99) - (b.worker.distance || 99));
+    } else if (sortBy === 'highest-rated') {
+      result.sort((a, b) => (b.worker.averageRating || b.worker.rating || 0) - (a.worker.averageRating || a.worker.rating || 0));
+    } else if (sortBy === 'lowest-price') {
+      result.sort((a, b) => (a.worker.expectedCharge || a.worker.startingPrice || 9999) - (b.worker.expectedCharge || b.worker.startingPrice || 9999));
+    }
 
     setFilteredWorkers(result);
-  }, [searchTerm, selectedService, selectedArea, distanceFilter, verifiedOnly, availableOnly, emergencyAvailableOnly, allWorkers]);
+  }, [allWorkers, verifiedOnly, availableOnly, sortBy]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -224,7 +227,23 @@ const Workers = () => {
                 </div>
               )}
 
-              {/* Checkboxes */}
+              {/* Sort By */}
+              {!isSimpleMode && (
+                <div>
+                  <label className="block text-sm font-medium text-text-gray mb-2">Sort By</label>
+                  <select 
+                    value={sortBy} 
+                    onChange={(e) => setSortBy(e.target.value)}
+                    className="w-full p-2 rounded-lg border border-border-gray focus:ring-2 focus:ring-primary focus:outline-none"
+                  >
+                    <option value="best-match">Best Match</option>
+                    <option value="nearest">Nearest</option>
+                    <option value="highest-rated">Highest Rated</option>
+                    <option value="lowest-price">Lowest Price</option>
+                  </select>
+                </div>
+              )}
+
               <div className="space-y-3">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input 
@@ -278,8 +297,8 @@ const Workers = () => {
           ) : filteredWorkers.length === 0 ? (
             <div className="bg-card-white rounded-3xl shadow-sm border border-border-gray p-12 text-center">
               <Search size={64} className="mx-auto text-border-gray mb-4" />
-              <h2 className="text-2xl font-bold text-navy mb-2">No workers available in your area yet.</h2>
-              <p className="text-text-gray mb-6">Want us to find one for you or want to register as a worker?</p>
+              <h2 className="text-2xl font-bold text-navy mb-2">No matching workers found.</h2>
+              <p className="text-text-gray mb-6">Try a nearby area, change filters, or request a callback.</p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <button onClick={() => navigate('/callback-request')} className="bg-primary hover:bg-primary-hover text-white px-8 py-3 rounded-xl font-bold transition-colors shadow-md">
                   Request Callback
@@ -291,8 +310,13 @@ const Workers = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {(Array.isArray(filteredWorkers) ? filteredWorkers : []).map((worker, index) => (
-                <WorkerCard key={worker._id || worker.id || index} worker={worker} />
+              {(Array.isArray(filteredWorkers) ? filteredWorkers : []).map((item, index) => (
+                <WorkerCard 
+                  key={item.worker._id || item.worker.id || index} 
+                  worker={item.worker}
+                  matchScore={item.matchScore}
+                  matchReason={item.matchReason}
+                />
               ))}
             </div>
           )}

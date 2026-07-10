@@ -1,32 +1,118 @@
 const Worker = require('../models/Worker');
+const { calculateWorkerScore } = require('../utils/workerRanking');
 
-// @desc    Get all workers (with optional geolocation filtering)
+// @desc    Get all workers (with optional geolocation filtering & smart ranking)
 // @route   GET /api/v1/workers
 // @access  Public
 exports.getWorkers = async (req, res) => {
     try {
-        const { service, lng, lat, distance, city } = req.query;
+        const { service, lng, lat, distance, city, area, smart, urgency, maxBudget, preferredTime } = req.query;
         let query = { isBlocked: false };
 
         if (service) {
-            query.services = { $in: [service] };
+            query.$or = [
+                { services: { $in: [new RegExp(`^${service}$`, 'i')] } },
+                { skills: { $in: [new RegExp(`^${service}$`, 'i')] } }
+            ];
         }
         if (city && city !== 'All Cities') {
-            query.city = city;
+            query.city = new RegExp(`^${city}$`, 'i');
+        }
+        if (area) {
+            query.area = new RegExp(`^${area}$`, 'i');
         }
 
         if (lng && lat && distance) {
-            // Earth radius in km is 6378.1
             const radius = distance / 6378.1;
             query.location = {
                 $geoWithin: {
-                    $centerSphere: [[lng, lat], radius]
+                    $centerSphere: [[parseFloat(lng), parseFloat(lat)], radius]
                 }
             };
         }
 
         const workers = await Worker.find(query);
+
+        if (smart === 'true') {
+            const searchParams = { service, city, area, latitude: lat, longitude: lng, urgency, maxBudget, preferredTime };
+            const rankedWorkers = workers.map(w => {
+                const { score, breakdown, matchReason } = calculateWorkerScore(w, searchParams);
+                // Return plain object to attach new properties safely
+                return {
+                    worker: w,
+                    matchScore: score,
+                    matchBreakdown: breakdown,
+                    matchReason
+                };
+            }).sort((a, b) => b.matchScore - a.matchScore);
+
+            return res.status(200).json({ success: true, count: rankedWorkers.length, data: rankedWorkers });
+        }
+
         res.status(200).json({ success: true, count: workers.length, data: workers });
+    } catch (err) {
+        res.status(400).json({ success: false, error: err.message });
+    }
+};
+
+// @desc    Get workers via explicit smart match API
+// @route   GET /api/v1/workers/smart-match
+// @access  Public
+exports.smartMatchWorkers = async (req, res) => {
+    try {
+        const { service, city, area, latitude, longitude, urgency, maxBudget, preferredTime, limit } = req.query;
+        let query = { isBlocked: false };
+
+        if (service) {
+            query.$or = [
+                { services: { $in: [new RegExp(`^${service}$`, 'i')] } },
+                { skills: { $in: [new RegExp(`^${service}$`, 'i')] } }
+            ];
+        }
+        if (city && city !== 'All Cities') query.city = new RegExp(`^${city}$`, 'i');
+        if (area) query.area = new RegExp(`^${area}$`, 'i');
+
+        const workers = await Worker.find(query);
+        const searchParams = { service, city, area, latitude, longitude, urgency, maxBudget, preferredTime };
+        
+        let rankedWorkers = workers.map(w => {
+            const { score, breakdown, matchReason } = calculateWorkerScore(w, searchParams);
+            return { worker: w, matchScore: score, matchBreakdown: breakdown, matchReason };
+        }).sort((a, b) => b.matchScore - a.matchScore);
+
+        if (limit) {
+            rankedWorkers = rankedWorkers.slice(0, parseInt(limit));
+        }
+
+        res.status(200).json({ success: true, count: rankedWorkers.length, data: rankedWorkers });
+    } catch (err) {
+        res.status(400).json({ success: false, error: err.message });
+    }
+};
+
+// @desc    Get emergency match workers
+// @route   GET /api/v1/workers/emergency-match
+// @access  Public
+exports.emergencyMatchWorkers = async (req, res) => {
+    try {
+        const { service, city, area, latitude, longitude } = req.query;
+        let query = { isBlocked: false, emergencyAvailable: true, isAvailable: true };
+
+        const workers = await Worker.find(query);
+        const searchParams = { service, city, area, latitude, longitude, urgency: 'emergency' };
+        
+        let rankedWorkers = workers.map(w => {
+            const { score, breakdown, matchReason } = calculateWorkerScore(w, searchParams);
+            return { worker: w, matchScore: score, matchBreakdown: breakdown, matchReason };
+        }).sort((a, b) => b.matchScore - a.matchScore);
+
+        const topWorkers = rankedWorkers.slice(0, 5);
+
+        if (topWorkers.length === 0) {
+            return res.status(200).json({ success: true, data: [], message: 'No emergency worker available right now. We will notify admin.' });
+        }
+
+        res.status(200).json({ success: true, count: topWorkers.length, data: topWorkers });
     } catch (err) {
         res.status(400).json({ success: false, error: err.message });
     }

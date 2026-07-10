@@ -8,7 +8,8 @@ const {
     getAllLeads,
     getAllComplaints,
     verifyWorker,
-    resolveComplaint
+    resolveComplaint,
+    getMatchingAnalytics
 } = require('../controllers/adminController');
 const { protect, authorize } = require('../middlewares/auth');
 
@@ -18,6 +19,7 @@ router.use(protect);
 router.use(authorize('admin'));
 
 router.get('/stats', getStats);
+router.get('/matching-analytics', getMatchingAnalytics);
 router.get('/workers/pending', getPendingWorkers);
 router.get('/workers', getAllWorkers);
 router.get('/customers', getAllCustomers);

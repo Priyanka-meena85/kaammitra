@@ -3,7 +3,40 @@ import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-route
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import { useAuth } from './context/AuthContext';
+import { useSocket } from './context/SocketContext';
 import toast from 'react-hot-toast';
+
+// Live Booking Toasts Component
+const LiveBookingToasts = () => {
+  const { socket } = useSocket();
+  const { user } = useAuth();
+
+  useEffect(() => {
+    if (!socket) return;
+
+    socket.on('booking_status_updated', ({ bookingId, status }) => {
+      if (user?.role === 'customer') {
+        if (status === 'Accepted') toast.success('Your booking was accepted!');
+        else if (status === 'On the Way') toast.success('Worker is on the way!');
+        else if (status === 'Completed') toast.success('Job completed!');
+        else toast.info(`Booking status updated to ${status}`);
+      } else if (user?.role === 'worker') {
+        toast.info(`Booking status updated to ${status}`);
+      }
+    });
+
+    socket.on('new_booking_received', () => {
+      toast.success('New booking received!', { duration: 5000 });
+    });
+
+    return () => {
+      socket.off('booking_status_updated');
+      socket.off('new_booking_received');
+    };
+  }, [socket, user]);
+
+  return null;
+};
 
 // Pages
 import Home from './pages/Home';
@@ -53,6 +86,7 @@ function App() {
   return (
     <Router>
       <AuthInterceptor />
+      <LiveBookingToasts />
       <div className="flex flex-col min-h-screen bg-bg-warm">
         <Toaster position="top-center" />
         <Navbar />
@@ -70,6 +104,7 @@ function App() {
             {/* Workers & Booking */}
             <Route path="/workers" element={<Workers />} />
             <Route path="/worker/:id" element={<WorkerProfile />} />
+            <Route path="/booking" element={<BookingForm />} />
             <Route path="/booking/:workerId" element={<BookingForm />} />
             <Route path="/my-bookings" element={<MyBookings />} />
             <Route path="/chat/:workerId" element={<Chat />} />

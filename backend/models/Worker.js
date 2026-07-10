@@ -156,6 +156,14 @@ const WorkerSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
+    cancelledJobs: {
+        type: Number,
+        default: 0
+    },
+    rejectedJobs: {
+        type: Number,
+        default: 0
+    },
     complaintsCount: {
         type: Number,
         default: 0
@@ -163,6 +171,14 @@ const WorkerSchema = new mongoose.Schema({
     responseTime: {
         type: Number, // average response time in minutes
         default: 30
+    },
+    responseTimeMinutes: {
+        type: Number, // More explicit response time for ranking
+        default: 60
+    },
+    lastActiveAt: {
+        type: Date,
+        default: Date.now
     },
     profileCompletion: {
         type: Number, // 0-100%
