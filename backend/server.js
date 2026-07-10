@@ -7,6 +7,10 @@ const connectDB = require('./config/db');
 // Load env vars
 dotenv.config();
 
+if (!process.env.JWT_SECRET) {
+    console.warn("WARNING: JWT_SECRET is not configured. Authentication will fail.");
+}
+
 // Connect to database
 connectDB();
 
@@ -52,6 +56,10 @@ app.use('/api/v1/upload', require('./routes/upload'));
 
 app.get('/', (req, res) => {
     res.send('KaamMitra API is running...');
+});
+
+app.get('/health', (req, res) => {
+    res.status(200).json({ success: true, message: 'KaamMitra backend is running' });
 });
 
 const PORT = process.env.PORT || 5000;

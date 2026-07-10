@@ -2,7 +2,7 @@ const Customer = require('../models/Customer');
 const Worker = require('../models/Worker');
 const Admin = require('../models/Admin');
 const jwt = require('jsonwebtoken');
-const admin = require('../config/firebase');
+const admin = require('../config/firebaseAdmin');
 
 const sendTokenResponse = (user, statusCode, res) => {
     const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
@@ -26,6 +26,10 @@ exports.register = async (req, res) => {
 
         if (!idToken) {
             return res.status(400).json({ success: false, error: 'Firebase ID token is required' });
+        }
+
+        if (!admin.apps || !admin.apps.length) {
+            return res.status(503).json({ success: false, message: 'Firebase Admin is not configured on the server' });
         }
 
         // Verify Firebase Token
@@ -145,6 +149,10 @@ exports.firebaseLogin = async (req, res) => {
 
         if (!idToken) {
             return res.status(400).json({ success: false, error: 'Firebase ID token is required' });
+        }
+
+        if (!admin.apps || !admin.apps.length) {
+            return res.status(503).json({ success: false, message: 'Firebase Admin is not configured on the server' });
         }
 
         // Verify Firebase Token
