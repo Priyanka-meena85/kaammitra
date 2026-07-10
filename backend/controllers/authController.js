@@ -2,7 +2,7 @@ const Customer = require('../models/Customer');
 const Worker = require('../models/Worker');
 const Admin = require('../models/Admin');
 const jwt = require('jsonwebtoken');
-const admin = require('../config/firebaseAdmin');
+const { firebaseAuth } = require('../config/firebaseAdmin');
 
 const sendTokenResponse = (user, statusCode, res) => {
     const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
@@ -28,14 +28,14 @@ exports.register = async (req, res) => {
             return res.status(400).json({ success: false, error: 'Firebase ID token is required' });
         }
 
-        if (!admin.apps || !admin.apps.length) {
+        if (!firebaseAuth) {
             return res.status(503).json({ success: false, message: 'Firebase Admin is not configured on the server' });
         }
 
         // Verify Firebase Token
         let decodedToken;
         try {
-            decodedToken = await admin.auth().verifyIdToken(idToken);
+            decodedToken = await firebaseAuth.verifyIdToken(idToken);
         } catch (error) {
             console.error("Firebase register verification failed:", error.message);
             return res.status(401).json({ success: false, error: 'Invalid Firebase ID token' });
@@ -151,14 +151,14 @@ exports.firebaseLogin = async (req, res) => {
             return res.status(400).json({ success: false, error: 'Firebase ID token is required' });
         }
 
-        if (!admin.apps || !admin.apps.length) {
+        if (!firebaseAuth) {
             return res.status(503).json({ success: false, message: 'Firebase Admin is not configured on the server' });
         }
 
         // Verify Firebase Token
         let decodedToken;
         try {
-            decodedToken = await admin.auth().verifyIdToken(idToken);
+            decodedToken = await firebaseAuth.verifyIdToken(idToken);
         } catch (error) {
             console.error("Firebase login verification failed:", error.message);
             return res.status(401).json({ success: false, error: 'Invalid Firebase ID token' });
