@@ -29,25 +29,38 @@ exports.register = async (req, res) => {
         }
 
         // Verify Firebase Token
-        const decodedToken = await admin.auth().verifyIdToken(idToken);
+        let decodedToken;
+        try {
+            decodedToken = await admin.auth().verifyIdToken(idToken);
+        } catch (error) {
+            console.error("Firebase register verification failed:", error.message);
+            return res.status(401).json({ success: false, error: 'Invalid Firebase ID token' });
+        }
+
         const { uid, phone_number } = decodedToken;
 
         if (!phone_number) {
             return res.status(400).json({ success: false, error: 'Phone number not found in Firebase token' });
         }
 
-        // Normalize phone number (Firebase returns +91XXXXXXXXXX)
-        const phone = String(phone_number).replace(/\D/g, '').slice(-10);
+        // Normalize phone number (E.164 format: +91XXXXXXXXXX)
+        const rawPhone = String(phone_number).replace(/\D/g, '');
+        const phone10 = rawPhone.slice(-10);
+        const phoneE164 = `+91${phone10}`;
+        const phoneLookup = [phone10, phoneE164, rawPhone];
 
-        // Check for duplicates
-        let existingUser = await Customer.findOne({ phone });
-        if (!existingUser) existingUser = await Worker.findOne({ phone });
+        // Check for duplicates by firebaseUid first, then by phone variants
+        let existingUser = await Customer.findOne({ $or: [{ firebaseUid: uid }, { phone: { $in: phoneLookup } }] });
+        if (!existingUser) {
+            existingUser = await Worker.findOne({ $or: [{ firebaseUid: uid }, { phone: { $in: phoneLookup } }] });
+        }
         
         if (existingUser) {
-            // Update firebaseUid if it was missing and return error that user exists (or proceed? The prompt says: "If a user with the verified phone already exists: update firebaseUid, set isPhoneVerified to true, preserve all existing profile and role data"). But this is the register route. If they are already registered, they should just login.
             if (!existingUser.firebaseUid || !existingUser.isPhoneVerified) {
                 existingUser.firebaseUid = uid;
                 existingUser.isPhoneVerified = true;
+                // Update their phone to standard format if it wasn't
+                existingUser.phone = phoneE164;
                 await existingUser.save();
             }
             return res.status(400).json({ success: false, error: 'Phone number already registered. Please login.' });
@@ -56,7 +69,7 @@ exports.register = async (req, res) => {
         if (role === 'worker') {
             const worker = await Worker.create({
                 firebaseUid: uid,
-                name, phone, password, services, location, address, city, area, 
+                name, phone: phoneE164, password, services, location, address, city, area, 
                 phoneVerified: true, isPhoneVerified: true, isVerified: false, verificationStatus: 'Pending Verification', isBlocked: false,
                 expectedCharge, skills, experience, workingHoursStart, workingHoursEnd, emergencyAvailable, maxTravelDistance,
                 profilePhotoUrl, profilePhotoPublicId, idDocumentUrl, idDocumentPublicId,
@@ -65,11 +78,14 @@ exports.register = async (req, res) => {
             sendTokenResponse(worker, 201, res);
         } else {
             const customer = await Customer.create({
-                name, phone, password, location, address, city, area, phoneVerified: true
+                firebaseUid: uid,
+                name, phone: phoneE164, password, location, address, city, area, 
+                phoneVerified: true, isPhoneVerified: true
             });
             sendTokenResponse(customer, 201, res);
         }
     } catch (err) {
+        console.error("Register Error:", err);
         res.status(400).json({ success: false, error: err.message });
     }
 };
@@ -132,20 +148,34 @@ exports.firebaseLogin = async (req, res) => {
         }
 
         // Verify Firebase Token
-        const decodedToken = await admin.auth().verifyIdToken(idToken);
+        let decodedToken;
+        try {
+            decodedToken = await admin.auth().verifyIdToken(idToken);
+        } catch (error) {
+            console.error("Firebase login verification failed:", error.message);
+            return res.status(401).json({ success: false, error: 'Invalid Firebase ID token' });
+        }
+        
         const { uid, phone_number } = decodedToken;
 
         if (!phone_number) {
             return res.status(400).json({ success: false, error: 'Phone number not found in Firebase token' });
         }
 
-        const phone = String(phone_number).replace(/\D/g, '').slice(-10);
+        // Normalize phone number (E.164 format: +91XXXXXXXXXX)
+        const rawPhone = String(phone_number).replace(/\D/g, '');
+        const phone10 = rawPhone.slice(-10);
+        const phoneE164 = `+91${phone10}`;
+        const phoneLookup = [phone10, phoneE164, rawPhone];
 
-        let user = await Customer.findOne({ phone });
-        if (!user) user = await Worker.findOne({ phone });
+        // Search by firebaseUid first, then normalized phone
+        let user = await Customer.findOne({ $or: [{ firebaseUid: uid }, { phone: { $in: phoneLookup } }] });
+        if (!user) {
+            user = await Worker.findOne({ $or: [{ firebaseUid: uid }, { phone: { $in: phoneLookup } }] });
+        }
         if (!user) {
              // Admin doesn't typically login with OTP, but just in case
-             user = await Admin.findOne({ username: phone });
+             user = await Admin.findOne({ username: { $in: phoneLookup } });
         }
 
         if (!user) {
@@ -153,9 +183,10 @@ exports.firebaseLogin = async (req, res) => {
         }
 
         // Update firebaseUid and verification status if not set
-        if (!user.firebaseUid || !user.isPhoneVerified) {
+        if (!user.firebaseUid || !user.isPhoneVerified || user.phone !== phoneE164) {
             user.firebaseUid = uid;
             user.isPhoneVerified = true;
+            user.phone = phoneE164; // standardize
             // Also update phoneVerified for backward compatibility
             if (user.phoneVerified !== undefined) {
                  user.phoneVerified = true;
@@ -166,6 +197,6 @@ exports.firebaseLogin = async (req, res) => {
         sendTokenResponse(user, 200, res);
     } catch (err) {
         console.error("Firebase Login Error:", err);
-        res.status(401).json({ success: false, error: 'Invalid Firebase ID token' });
+        res.status(500).json({ success: false, error: 'Server error during login' });
     }
 };
