@@ -53,10 +53,15 @@ const Emergency = () => {
   const findNearest = (type) => {
     if (!formData.service) return toast.error('Select a service first');
     
+    const WHATSAPP_SUPPORT_NUMBER = import.meta.env.VITE_WHATSAPP_SUPPORT_NUMBER || "918503396575";
+    const supportNumber = WHATSAPP_SUPPORT_NUMBER;
+
     if (type === 'call') {
-      window.open('tel:+918503996575', '_self');
+      window.open(`tel:+${supportNumber}`, '_self');
     } else if (type === 'wa') {
-      window.open('https://wa.me/918503996575?text=I%20need%20emergency%20help%20for%20' + formData.service, '_blank');
+      const WHATSAPP_SUPPORT_MESSAGE = "Hello KaamMitra, mujhe ek service ke regarding help chahiye.";
+      const whatsappUrl = `https://wa.me/${WHATSAPP_SUPPORT_NUMBER}?text=${encodeURIComponent(WHATSAPP_SUPPORT_MESSAGE)}`;
+      window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
     }
   };
 

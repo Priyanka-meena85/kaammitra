@@ -2,7 +2,6 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
-import FloatingWhatsApp from './components/FloatingWhatsApp';
 
 // Pages
 import Home from './pages/Home';
@@ -62,7 +61,6 @@ function App() {
             <Route path="/admin" element={<AdminDashboard />} />
           </Routes>
         </main>
-        <FloatingWhatsApp />
         <Footer />
       </div>
     </Router>

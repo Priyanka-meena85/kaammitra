@@ -9,6 +9,11 @@ import toast from 'react-hot-toast';
 const Services = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
+  
+  const WHATSAPP_SUPPORT_NUMBER = import.meta.env.VITE_WHATSAPP_SUPPORT_NUMBER || "918503396575";
+  const WHATSAPP_SUPPORT_MESSAGE = "Hello KaamMitra, mujhe ek service ke regarding help chahiye.";
+  const whatsappUrl = `https://wa.me/${WHATSAPP_SUPPORT_NUMBER}?text=${encodeURIComponent(WHATSAPP_SUPPORT_MESSAGE)}`;
+  const supportNumber = WHATSAPP_SUPPORT_NUMBER;
   const [activeCategory, setActiveCategory] = useState('All');
 
   const categories = ['All', 'Repair', 'Home Service', 'Construction', 'Cleaning', 'Emergency'];
@@ -167,15 +172,15 @@ const Services = () => {
           
           <div className="flex flex-col sm:flex-row justify-center gap-4">
             <a 
-              href="tel:+918503996575"
+              href={`tel:+${supportNumber}`}
               className="flex items-center justify-center gap-3 bg-primary hover:bg-primary-hover text-white px-8 py-4 rounded-xl font-bold text-lg shadow-lg transition-all"
             >
               <Phone size={24} /> Call Support
             </a>
             <a 
-              href="https://wa.me/918503996575?text=Hi,%20I%20need%20help%20finding%20a%20service."
+              href={whatsappUrl}
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
               className="flex items-center justify-center gap-3 bg-accent-green hover:bg-accent-green text-white px-8 py-4 rounded-xl font-bold text-lg shadow-lg transition-all"
             >
               <MessageCircle size={24} /> WhatsApp Help
