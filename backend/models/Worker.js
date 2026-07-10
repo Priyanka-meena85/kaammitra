@@ -148,6 +148,47 @@ const WorkerSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
+    totalReviews: {
+        type: Number,
+        default: 0
+    },
+    ratingBreakdown: {
+        five: { type: Number, default: 0 },
+        four: { type: Number, default: 0 },
+        three: { type: Number, default: 0 },
+        two: { type: Number, default: 0 },
+        one: { type: Number, default: 0 }
+    },
+    trustMetrics: {
+        completedJobs: { type: Number, default: 0 },
+        cancelledJobs: { type: Number, default: 0 },
+        rejectedJobs: { type: Number, default: 0 },
+        complaintCount: { type: Number, default: 0 },
+        resolvedComplaintCount: { type: Number, default: 0 },
+        responseTimeMinutes: { type: Number, default: 60 },
+        repeatCustomerCount: { type: Number, default: 0 },
+        onTimeRate: { type: Number, default: 0 },
+        verificationScore: { type: Number, default: 0 },
+        reviewScore: { type: Number, default: 0 },
+        safetyScore: { type: Number, default: 100 }
+    },
+    badges: [{
+        type: { type: String }, // e.g. 'verified', 'top_rated'
+        label: { type: String },
+        awardedAt: { type: Date }
+    }],
+    riskLevel: {
+        type: String,
+        enum: ['low', 'medium', 'high', 'critical'],
+        default: 'low'
+    },
+    isFlagged: {
+        type: Boolean,
+        default: false
+    },
+    flagReasons: [{
+        type: String
+    }],
     totalRatings: {
         type: Number,
         default: 0

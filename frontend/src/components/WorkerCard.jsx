@@ -61,6 +61,11 @@ const WorkerCard = ({ worker, matchScore, matchReason }) => {
         {worker.emergencyAvailable && (
           <span className="bg-orange-100 text-orange-700 text-xs font-bold px-2 py-1 rounded-md shadow-sm flex items-center gap-1"><Zap size={12}/> Emergency Ready</span>
         )}
+        {worker.trustScore && (
+          <span className={`text-xs font-bold px-2 py-1 rounded-md shadow-sm border ${worker.trustScore < 40 ? 'bg-red-50 text-red-700 border-red-200' : 'bg-green-50 text-green-700 border-green-200'}`}>
+            Trust Score: {worker.trustScore}
+          </span>
+        )}
       </div>
 
       <div className="p-6">

@@ -102,6 +102,14 @@ exports.sendMessage = async (req, res) => {
         chat.messages.push(newMessage);
         await chat.save();
 
+        const receiverId = req.user.role === 'customer' ? wId : cId;
+        const receiverRole = req.user.role === 'customer' ? 'worker' : 'customer';
+        const { createNotification } = require('../services/notificationService');
+        createNotification({
+            recipientId: receiverId, recipientRole: receiverRole, type: 'chat_message',
+            title: 'New Message', message: 'You have a new message.', link: `/chat/${conversationId}`
+        });
+
         res.status(201).json({ success: true, data: newMessage });
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });

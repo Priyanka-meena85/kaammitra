@@ -1,12 +1,14 @@
 const Worker = require('../models/Worker');
+const Booking = require('../models/Booking');
 const { calculateWorkerScore } = require('../utils/workerRanking');
+const { createAuditLog } = require('../services/auditService');
 
 // @desc    Get all workers (with optional geolocation filtering & smart ranking)
 // @route   GET /api/v1/workers
 // @access  Public
 exports.getWorkers = async (req, res) => {
     try {
-        const { service, lng, lat, distance, city, area, smart, urgency, maxBudget, preferredTime } = req.query;
+        const { service, lng, lat, distance, city, area, smart, urgency, maxBudget, preferredTime, customerId } = req.query;
         let query = { isBlocked: false };
 
         if (service) {
@@ -35,6 +37,13 @@ exports.getWorkers = async (req, res) => {
 
         if (smart === 'true') {
             const searchParams = { service, city, area, latitude: lat, longitude: lng, urgency, maxBudget, preferredTime };
+            
+            // Phase 9: Collaborative Filtering
+            if (customerId) {
+                const pastBookings = await Booking.find({ customerId, status: 'Completed' }).select('workerId');
+                searchParams.pastBookedWorkers = pastBookings.map(b => b.workerId?.toString()).filter(Boolean);
+            }
+
             const rankedWorkers = workers.map(w => {
                 const { score, breakdown, matchReason } = calculateWorkerScore(w, searchParams);
                 // Return plain object to attach new properties safely
@@ -60,7 +69,7 @@ exports.getWorkers = async (req, res) => {
 // @access  Public
 exports.smartMatchWorkers = async (req, res) => {
     try {
-        const { service, city, area, latitude, longitude, urgency, maxBudget, preferredTime, limit } = req.query;
+        const { service, city, area, latitude, longitude, urgency, maxBudget, preferredTime, limit, customerId } = req.query;
         let query = { isBlocked: false };
 
         if (service) {
@@ -75,6 +84,12 @@ exports.smartMatchWorkers = async (req, res) => {
         const workers = await Worker.find(query);
         const searchParams = { service, city, area, latitude, longitude, urgency, maxBudget, preferredTime };
         
+        // Phase 9: Collaborative Filtering
+        if (customerId) {
+            const pastBookings = await Booking.find({ customerId, status: 'Completed' }).select('workerId');
+            searchParams.pastBookedWorkers = pastBookings.map(b => b.workerId?.toString()).filter(Boolean);
+        }
+
         let rankedWorkers = workers.map(w => {
             const { score, breakdown, matchReason } = calculateWorkerScore(w, searchParams);
             return { worker: w, matchScore: score, matchBreakdown: breakdown, matchReason };
@@ -140,6 +155,20 @@ exports.updateAvailability = async (req, res) => {
     try {
         const { isAvailable } = req.body;
         const worker = await Worker.findByIdAndUpdate(req.params.id, { isAvailable }, { new: true });
+        
+        await createAuditLog({
+            actorId: req.user.id,
+            actorRole: 'worker',
+            actorName: req.user.name,
+            action: 'WORKER_AVAILABILITY_UPDATED',
+            entityType: 'Worker',
+            entityId: worker._id,
+            description: `Worker updated availability to ${isAvailable}`,
+            ipAddress: req.ip,
+            userAgent: req.get('user-agent'),
+            severity: 'low'
+        });
+
         res.status(200).json({ success: true, data: worker });
     } catch (err) {
         res.status(500).json({ success: false, message: 'Server error' });
@@ -183,6 +212,20 @@ exports.verifyWorker = async (req, res) => {
 exports.blockWorker = async (req, res) => {
     try {
         const worker = await Worker.findByIdAndUpdate(req.params.id, { isBlocked: true, verificationStatus: 'Blocked' }, { new: true });
+        
+        await createAuditLog({
+            actorId: req.user.id,
+            actorRole: 'admin',
+            actorName: req.user.name,
+            action: 'WORKER_BLOCKED',
+            entityType: 'Worker',
+            entityId: worker._id,
+            description: `Worker blocked by admin`,
+            ipAddress: req.ip,
+            userAgent: req.get('user-agent'),
+            severity: 'high'
+        });
+
         res.status(200).json({ success: true, data: worker });
     } catch (err) {
         res.status(500).json({ success: false, message: 'Server error' });
@@ -195,6 +238,20 @@ exports.blockWorker = async (req, res) => {
 exports.unblockWorker = async (req, res) => {
     try {
         const worker = await Worker.findByIdAndUpdate(req.params.id, { isBlocked: false, verificationStatus: 'Active' }, { new: true });
+        
+        await createAuditLog({
+            actorId: req.user.id,
+            actorRole: 'admin',
+            actorName: req.user.name,
+            action: 'WORKER_UNBLOCKED',
+            entityType: 'Worker',
+            entityId: worker._id,
+            description: `Worker unblocked by admin`,
+            ipAddress: req.ip,
+            userAgent: req.get('user-agent'),
+            severity: 'high'
+        });
+
         res.status(200).json({ success: true, data: worker });
     } catch (err) {
         res.status(500).json({ success: false, message: 'Server error' });

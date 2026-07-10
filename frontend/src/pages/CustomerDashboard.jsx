@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, List, AlertTriangle, User } from 'lucide-react';
+import { Search, List, AlertTriangle, User, Bell } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const CustomerDashboard = () => {
@@ -31,18 +31,36 @@ const CustomerDashboard = () => {
           <h1 className="text-3xl font-bold text-navy">Welcome, {user.name}!</h1>
           <p className="text-text-gray">What service do you need today?</p>
         </div>
-        <button 
-          onClick={() => {
-            logout();
-            navigate('/login');
-          }}
-          className="bg-bg-soft-blue hover:bg-border-gray text-text-gray px-4 py-2 rounded-lg font-medium"
-        >
-          Logout
-        </button>
+        <div className="flex gap-4 items-center">
+          {user.reliabilityScore !== undefined && (
+            <div className="hidden md:block text-right">
+               <p className="text-xs text-text-gray uppercase tracking-wider font-bold">Reliability Score</p>
+               <p className={`font-bold text-lg ${user.reliabilityScore < 50 ? 'text-orange-600' : 'text-green-600'}`}>{user.reliabilityScore}/100</p>
+            </div>
+          )}
+          <button 
+            onClick={() => {
+              logout();
+              navigate('/login');
+            }}
+            className="bg-bg-soft-blue hover:bg-border-gray text-text-gray px-4 py-2 rounded-lg font-medium"
+          >
+            Logout
+          </button>
+        </div>
       </div>
+      
+      {user.riskLevel === 'high' || user.riskLevel === 'critical' ? (
+        <div className="bg-red-50 border border-red-200 p-4 rounded-2xl mb-8 flex items-start gap-3">
+           <AlertTriangle className="text-red-600 mt-0.5 shrink-0" size={24} />
+           <div>
+              <p className="font-bold text-red-800">Account Warning</p>
+              <p className="text-sm text-red-700">Your reliability score is low due to frequent cancellations or disputes. Consistent low scores may restrict your access to booking top-rated workers.</p>
+           </div>
+        </div>
+      ) : null}
 
-      <div className="grid md:grid-cols-3 gap-6 mb-8">
+      <div className="grid md:grid-cols-4 gap-6 mb-8">
         <div 
           onClick={() => navigate('/workers')}
           className="bg-primary text-white p-6 rounded-2xl shadow-md hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer"
@@ -68,6 +86,15 @@ const CustomerDashboard = () => {
           <AlertTriangle size={32} className="mb-4" />
           <h2 className="text-xl font-bold mb-2">Emergency Help</h2>
           <p className="text-red-100">Get immediate assistance for urgent repairs.</p>
+        </div>
+
+        <div 
+          onClick={() => navigate('/notifications')}
+          className="bg-blue-500 text-white p-6 rounded-2xl shadow-md hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer"
+        >
+          <Bell size={32} className="mb-4" />
+          <h2 className="text-xl font-bold mb-2">Notifications</h2>
+          <p className="text-blue-100">View alerts and update preferences.</p>
         </div>
       </div>
 

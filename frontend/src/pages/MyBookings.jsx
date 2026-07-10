@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import StatusTimeline from '../components/StatusTimeline';
 import ComplaintModal from '../components/ComplaintModal';
+import ReviewModal from '../components/ReviewModal';
+import LiveTracking from '../components/LiveTracking';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
 import { extractArray } from '../utils/apiResponse';
@@ -12,6 +14,7 @@ const MyBookings = () => {
   const [bookings, setBookings] = useState([]);
   const [complaints, setComplaints] = useState([]);
   const [complaintModalOpen, setComplaintModalOpen] = useState(false);
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -187,6 +190,14 @@ const MyBookings = () => {
                 <div className="mt-4">
                   <StatusTimeline status={booking.status} />
                 </div>
+
+                {user?.role === 'customer' && booking.status === 'On the Way' && (
+                  <LiveTracking 
+                    bookingId={booking._id} 
+                    customerLat={booking.location?.coordinates?.[1] || user?.location?.coordinates?.[1]}
+                    customerLng={booking.location?.coordinates?.[0] || user?.location?.coordinates?.[0]} 
+                  />
+                )}
               </div>
 
               <div className="flex flex-col gap-3 justify-center border-t md:border-t-0 md:border-l border-border-gray pt-4 md:pt-0 md:pl-6 min-w-[150px]">
@@ -220,7 +231,13 @@ const MyBookings = () => {
                 )}
 
                 {booking.status === 'Completed' && (
-                  <button className="w-full flex justify-center items-center gap-2 bg-yellow-50 hover:bg-yellow-100 text-yellow-700 py-2 rounded-lg font-medium transition-colors">
+                  <button 
+                    onClick={() => {
+                      setSelectedBooking(booking);
+                      setReviewModalOpen(true);
+                    }}
+                    className="w-full flex justify-center items-center gap-2 bg-yellow-50 hover:bg-yellow-100 text-yellow-700 py-2 rounded-lg font-medium transition-colors"
+                  >
                     <Star size={18} /> Rate Worker
                   </button>
                 )}
@@ -267,6 +284,21 @@ const MyBookings = () => {
           }}
           workerId={selectedBooking.worker?._id || selectedBooking.workerId}
           bookingId={selectedBooking._id}
+        />
+      )}
+
+      {selectedBooking && (
+        <ReviewModal
+          isOpen={reviewModalOpen}
+          onClose={() => {
+            setReviewModalOpen(false);
+            setSelectedBooking(null);
+          }}
+          bookingId={selectedBooking._id}
+          targetName={selectedBooking.workerId?.name || selectedBooking.workerName || 'Worker'}
+          onSuccess={() => {
+            // Ideally flag the booking as reviewed, for now just close
+          }}
         />
       )}
     </div>

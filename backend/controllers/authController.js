@@ -3,6 +3,7 @@ const Worker = require('../models/Worker');
 const Admin = require('../models/Admin');
 const jwt = require('jsonwebtoken');
 const { firebaseAuth } = require('../config/firebaseAdmin');
+const { createAuditLog } = require('../services/auditService');
 
 const sendTokenResponse = (user, statusCode, res) => {
     const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
@@ -104,6 +105,33 @@ exports.register = async (req, res) => {
                 profilePhotoUrl, profilePhotoPublicId, idDocumentUrl, idDocumentPublicId,
                 addressProofUrl, addressProofPublicId, documentType
             });
+            const { createNotification } = require('../services/notificationService');
+            createNotification({
+                recipientId: worker._id, recipientRole: 'worker', type: 'worker_verification_pending',
+                title: 'Verification Pending', message: 'Your worker account is pending admin verification.', link: '/worker-dashboard'
+            });
+            const Admin = require('../models/Admin');
+            const admin = await Admin.findOne();
+            if (admin) {
+                createNotification({
+                    recipientId: admin._id, recipientRole: 'admin', type: 'worker_verification_pending',
+                    title: 'New Worker Verification', message: `Worker ${name} registered and needs verification.`, link: '/admin-dashboard'
+                });
+            }
+            
+            await createAuditLog({
+                actorId: worker._id,
+                actorRole: 'worker',
+                actorName: worker.name,
+                action: 'WORKER_REGISTERED',
+                entityType: 'Worker',
+                entityId: worker._id,
+                description: 'Worker registered successfully via Firebase',
+                ipAddress: req.ip,
+                userAgent: req.get('user-agent'),
+                severity: 'medium'
+            });
+            
             sendTokenResponse(worker, 201, res);
         } else {
             const customer = await Customer.create({
@@ -111,6 +139,20 @@ exports.register = async (req, res) => {
                 name, phone: phoneE164, password, location, address, city, area, 
                 phoneVerified: true, isPhoneVerified: true
             });
+            
+            await createAuditLog({
+                actorId: customer._id,
+                actorRole: 'customer',
+                actorName: customer.name,
+                action: 'CUSTOMER_REGISTERED',
+                entityType: 'Customer',
+                entityId: customer._id,
+                description: 'Customer registered successfully via Firebase',
+                ipAddress: req.ip,
+                userAgent: req.get('user-agent'),
+                severity: 'low'
+            });
+
             sendTokenResponse(customer, 201, res);
         }
     } catch (err) {
@@ -151,6 +193,19 @@ exports.login = async (req, res) => {
         if (!isMatch) {
             return res.status(401).json({ success: false, error: 'Invalid credentials' });
         }
+
+        await createAuditLog({
+            actorId: user._id,
+            actorRole: role,
+            actorName: user.name || user.username,
+            action: 'USER_LOGIN',
+            entityType: 'User',
+            entityId: user._id,
+            description: `${role} logged in via password`,
+            ipAddress: req.ip,
+            userAgent: req.get('user-agent'),
+            severity: 'low'
+        });
 
         sendTokenResponse(user, 200, res);
     } catch (err) {
@@ -259,6 +314,19 @@ exports.firebaseLogin = async (req, res) => {
 
         const token = jwt.sign({ id: account._id, role: account.role || accountType }, process.env.JWT_SECRET, {
             expiresIn: '30d'
+        });
+
+        await createAuditLog({
+            actorId: account._id,
+            actorRole: account.role || accountType,
+            actorName: account.name || account.username,
+            action: 'USER_LOGIN',
+            entityType: 'User',
+            entityId: account._id,
+            description: `${accountType} logged in via Firebase`,
+            ipAddress: req.ip,
+            userAgent: req.get('user-agent'),
+            severity: 'low'
         });
 
         return res.status(200).json({

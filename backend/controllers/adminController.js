@@ -4,6 +4,7 @@ const Booking = require('../models/Booking');
 const Complaint = require('../models/Complaint');
 const CallLead = require('../models/CallLead');
 const AreaLaunchRequest = require('../models/AreaLaunchRequest');
+const { createAuditLog } = require('../services/auditService');
 
 exports.getStats = async (req, res) => {
     try {
@@ -114,6 +115,33 @@ exports.verifyWorker = async (req, res) => {
             return res.status(404).json({ success: false, error: 'Worker not found' });
         }
 
+        const { createNotification } = require('../services/notificationService');
+        if (status === 'Verified') {
+            createNotification({
+                recipientId: worker._id, recipientRole: 'worker', type: 'worker_verified',
+                title: 'Account Verified', message: 'Congratulations! Your account has been verified by the admin.', link: '/worker-dashboard'
+            });
+        } else if (status === 'Rejected') {
+            createNotification({
+                recipientId: worker._id, recipientRole: 'worker', type: 'worker_rejected',
+                title: 'Verification Rejected', message: `Your verification was rejected. Reason: ${adminNote}`, link: '/worker-dashboard'
+            });
+        }
+        
+        await createAuditLog({
+            actorId: req.user?._id,
+            actorRole: 'admin',
+            actorName: req.user?.name,
+            action: status === 'Verified' ? 'WORKER_APPROVED' : 'WORKER_REJECTED',
+            entityType: 'Worker',
+            entityId: worker._id,
+            description: `Worker ${worker.name} ${status.toLowerCase()} by admin.`,
+            metadata: { note: adminNote },
+            ipAddress: req.ip,
+            userAgent: req.get('user-agent'),
+            severity: 'medium'
+        });
+
         res.status(200).json({ success: true, data: worker });
     } catch (err) {
         res.status(400).json({ success: false, error: err.message });
@@ -132,6 +160,35 @@ exports.resolveComplaint = async (req, res) => {
             updateData,
             { new: true, runValidators: true }
         );
+
+        const { createNotification } = require('../services/notificationService');
+        if (complaint && complaint.customerId) {
+            createNotification({
+                recipientId: complaint.customerId, recipientRole: 'customer', type: 'complaint_updated',
+                title: 'Complaint Updated', message: `Your complaint status is now ${status}.`, link: '/my-complaints'
+            });
+        }
+        if (complaint && complaint.workerId) {
+            createNotification({
+                recipientId: complaint.workerId, recipientRole: 'worker', type: 'complaint_updated',
+                title: 'Complaint Updated', message: `A complaint involving you is now ${status}.`, link: '/worker-dashboard'
+            });
+        }
+
+        await createAuditLog({
+            actorId: req.user?._id,
+            actorRole: 'admin',
+            actorName: req.user?.name,
+            action: 'COMPLAINT_STATUS_UPDATED',
+            entityType: 'Complaint',
+            entityId: complaint._id,
+            description: `Complaint updated to ${status} by admin.`,
+            metadata: { note: adminNote },
+            ipAddress: req.ip,
+            userAgent: req.get('user-agent'),
+            severity: 'medium'
+        });
+
         res.status(200).json({ success: true, data: complaint });
     } catch (err) {
         res.status(400).json({ success: false, error: err.message });

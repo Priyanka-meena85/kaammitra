@@ -71,6 +71,12 @@ app.use('/api/v1/callback-requests', require('./routes/callback'));
 app.use('/api/v1/areas', require('./routes/areas'));
 app.use('/api/v1/admin', require('./routes/admin'));
 app.use('/api/v1/upload', require('./routes/upload'));
+app.use('/api/v1/notifications', require('./routes/notificationRoutes'));
+app.use('/api/v1/admin/analytics', require('./routes/analyticsRoutes'));
+app.use('/api/v1/admin/audit-logs', require('./routes/auditRoutes'));
+app.use('/api/v1/admin/exports', require('./routes/exportRoutes'));
+app.use('/api/v1/reviews', require('./routes/reviewRoutes'));
+app.use('/api/v1/safety', require('./routes/safetyRoutes'));
 
 app.get('/', (req, res) => {
     res.send('KaamMitra API is running...');

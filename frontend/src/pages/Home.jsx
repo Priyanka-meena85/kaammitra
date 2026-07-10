@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
 import { Shield, Phone, MapPin, Star, AlertTriangle } from 'lucide-react';
 import VoiceSearch from '../components/VoiceSearch';
@@ -96,6 +97,10 @@ const Home = () => {
 
   return (
     <div className="flex flex-col min-h-screen">
+      <Helmet>
+        <title>KaamMitra | Your Local Worker Marketplace</title>
+        <meta name="description" content="Find trusted local workers for your everyday needs instantly. Plumbers, electricians, cleaners, and more in your city." />
+      </Helmet>
       {/* Hero Section */}
       <section className="bg-gradient-to-br from-blue-50 to-blue-100 py-16 md:py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

@@ -10,13 +10,16 @@ const {
     smartMatchWorkers,
     emergencyMatchWorkers 
 } = require('../controllers/workerController');
+const cache = require('../middleware/cache');
 
 const router = express.Router();
 
-router.route('/smart-match').get(smartMatchWorkers);
+// Cache smart-match for 60 seconds (since it changes often based on availability)
+router.route('/smart-match').get(cache(60), smartMatchWorkers);
 router.route('/emergency-match').get(emergencyMatchWorkers);
 
-router.route('/').get(getWorkers);
+// Cache generic worker list for 5 minutes
+router.route('/').get(cache(300), getWorkers);
 router.route('/:id').get(getWorker);
 
 router.patch('/:id/availability', updateAvailability);

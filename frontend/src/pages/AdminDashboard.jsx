@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, Briefcase, FileText, AlertTriangle, MapPin, PhoneCall, CheckCircle } from 'lucide-react';
+import { Users, Briefcase, FileText, AlertTriangle, MapPin, PhoneCall, CheckCircle, Bell } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
@@ -13,10 +13,10 @@ const AdminDashboard = () => {
   const { user, logout, loading: authLoading } = useAuth();
   
   const [stats, setStats] = useState({
-    customers: 0,
-    workers: 0,
-    bookings: 0,
-    complaints: 0,
+    customers: 0, workers: 0, verifiedWorkers: 0, pendingWorkers: 0,
+    bookings: 0, completedBookings: 0, cancelledBookings: 0,
+    revenue: 0, commission: 0, payoutsPending: 0,
+    complaints: 0, emergencyRequests: 0
   });
 
   const [pendingWorkers, setPendingWorkers] = useState([]);
@@ -33,8 +33,8 @@ const AdminDashboard = () => {
     const fetchAdminData = async () => {
       try {
         setLoading(true);
-        const statsRes = await api.get('/admin/stats');
-        setStats(statsRes.data.data);
+        const statsRes = await api.get('/admin/analytics/summary');
+        setStats(statsRes.data.data.totals);
         
         const [workersRes, callbacksRes, areasRes, complaintsRes, bookingsRes, payoutsRes] = await Promise.all([
            api.get('/admin/workers'),
@@ -160,45 +160,68 @@ const AdminDashboard = () => {
           <h1 className="text-3xl font-bold text-navy">Admin Control Center</h1>
           <p className="text-text-gray">Platform Overview and Management</p>
         </div>
-        <button 
-          onClick={() => {
-            logout();
-            navigate('/login');
-          }}
-          className="bg-bg-soft-blue hover:bg-border-gray text-text-gray px-6 py-2 rounded-xl font-bold transition shadow-sm"
-        >
-          Logout
-        </button>
+        <div className="flex flex-wrap gap-2 md:gap-4 justify-end">
+          <button onClick={() => navigate('/admin/analytics')} className="bg-indigo-50 text-indigo-700 border border-indigo-200 px-4 py-2 rounded-xl font-bold transition shadow-sm hover:bg-indigo-100 text-sm">Analytics</button>
+          <button onClick={() => navigate('/admin/reports')} className="bg-purple-50 text-purple-700 border border-purple-200 px-4 py-2 rounded-xl font-bold transition shadow-sm hover:bg-purple-100 text-sm">Reports</button>
+          <button onClick={() => navigate('/admin/audit-logs')} className="bg-gray-50 text-gray-700 border border-gray-200 px-4 py-2 rounded-xl font-bold transition shadow-sm hover:bg-gray-100 text-sm">Audit Logs</button>
+          <button onClick={() => navigate('/admin/trust-safety')} className="bg-red-50 text-red-700 border border-red-200 px-4 py-2 rounded-xl font-bold transition shadow-sm hover:bg-red-100 text-sm">Trust & Safety</button>
+          <button onClick={() => navigate('/notifications')} className="bg-blue-50 text-primary border border-blue-200 px-4 py-2 rounded-xl font-bold transition shadow-sm flex items-center gap-2 hover:bg-blue-100 text-sm">
+            <Bell size={16} /> Alerts
+          </button>
+          <button onClick={() => { logout(); navigate('/login'); }} className="bg-red-50 text-red-600 border border-red-200 px-4 py-2 rounded-xl font-bold transition shadow-sm hover:bg-red-100 text-sm">
+            Logout
+          </button>
+        </div>
       </div>
 
-      <div className="grid md:grid-cols-4 gap-6 mb-8">
-        <div className="bg-card-white rounded-2xl shadow-sm border border-border-gray p-6 hover:shadow-md transition">
-          <div className="flex justify-between items-start mb-4">
-            <div className="bg-bg-soft-blue text-primary p-3 rounded-xl"><Users size={24} /></div>
-          </div>
-          <h2 className="text-text-gray font-medium">Total Customers</h2>
-          <p className="text-3xl font-bold text-navy">{stats.totalCustomers || stats.customers}</p>
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
+        <div className="bg-card-white rounded-2xl shadow-sm border border-border-gray p-4 hover:shadow-md transition">
+          <h2 className="text-text-gray text-xs font-medium uppercase tracking-wider mb-1">Total Customers</h2>
+          <p className="text-2xl font-bold text-navy">{stats.customers}</p>
         </div>
-        <div className="bg-card-white rounded-2xl shadow-sm border border-border-gray p-6 hover:shadow-md transition">
-          <div className="flex justify-between items-start mb-4">
-            <div className="bg-green-100 text-green-600 p-3 rounded-xl"><Briefcase size={24} /></div>
-          </div>
-          <h2 className="text-text-gray font-medium">Total Workers</h2>
-          <p className="text-3xl font-bold text-navy">{stats.totalWorkers || stats.workers}</p>
+        <div className="bg-card-white rounded-2xl shadow-sm border border-border-gray p-4 hover:shadow-md transition">
+          <h2 className="text-text-gray text-xs font-medium uppercase tracking-wider mb-1">Total Workers</h2>
+          <p className="text-2xl font-bold text-navy">{stats.workers}</p>
         </div>
-        <div className="bg-card-white rounded-2xl shadow-sm border border-border-gray p-6 hover:shadow-md transition">
-          <div className="flex justify-between items-start mb-4">
-            <div className="bg-blue-100 text-blue-600 p-3 rounded-xl"><FileText size={24} /></div>
-          </div>
-          <h2 className="text-text-gray font-medium">Total Bookings</h2>
-          <p className="text-3xl font-bold text-navy">{stats.totalBookings || stats.bookings}</p>
+        <div className="bg-card-white rounded-2xl shadow-sm border border-border-gray p-4 hover:shadow-md transition">
+          <h2 className="text-text-gray text-xs font-medium uppercase tracking-wider mb-1">Verified Workers</h2>
+          <p className="text-2xl font-bold text-green-600">{stats.verifiedWorkers}</p>
         </div>
-        <div className="bg-card-white rounded-2xl shadow-sm border border-border-gray p-6 hover:shadow-md transition">
-          <div className="flex justify-between items-start mb-4">
-            <div className="bg-orange-100 text-orange-600 p-3 rounded-xl"><AlertTriangle size={24} /></div>
-          </div>
-          <h2 className="text-text-gray font-medium">Total Complaints</h2>
-          <p className="text-3xl font-bold text-navy">{stats.totalComplaints || stats.complaints}</p>
+        <div className="bg-card-white rounded-2xl shadow-sm border border-border-gray p-4 hover:shadow-md transition border-l-4 border-l-yellow-400">
+          <h2 className="text-text-gray text-xs font-medium uppercase tracking-wider mb-1">Pending Workers</h2>
+          <p className="text-2xl font-bold text-yellow-600">{stats.pendingWorkers}</p>
+        </div>
+        <div className="bg-card-white rounded-2xl shadow-sm border border-border-gray p-4 hover:shadow-md transition">
+          <h2 className="text-text-gray text-xs font-medium uppercase tracking-wider mb-1">Total Bookings</h2>
+          <p className="text-2xl font-bold text-navy">{stats.bookings}</p>
+        </div>
+        <div className="bg-card-white rounded-2xl shadow-sm border border-border-gray p-4 hover:shadow-md transition">
+          <h2 className="text-text-gray text-xs font-medium uppercase tracking-wider mb-1">Completed Bookings</h2>
+          <p className="text-2xl font-bold text-green-600">{stats.completedBookings}</p>
+        </div>
+        <div className="bg-card-white rounded-2xl shadow-sm border border-border-gray p-4 hover:shadow-md transition">
+          <h2 className="text-text-gray text-xs font-medium uppercase tracking-wider mb-1">Cancelled Bookings</h2>
+          <p className="text-2xl font-bold text-red-500">{stats.cancelledBookings}</p>
+        </div>
+        <div className="bg-card-white rounded-2xl shadow-sm border border-border-gray p-4 hover:shadow-md transition">
+          <h2 className="text-text-gray text-xs font-medium uppercase tracking-wider mb-1">Total Revenue</h2>
+          <p className="text-2xl font-bold text-green-700">₹{stats.revenue?.toLocaleString()}</p>
+        </div>
+        <div className="bg-card-white rounded-2xl shadow-sm border border-border-gray p-4 hover:shadow-md transition">
+          <h2 className="text-text-gray text-xs font-medium uppercase tracking-wider mb-1">Platform Commission</h2>
+          <p className="text-2xl font-bold text-indigo-600">₹{stats.commission?.toLocaleString()}</p>
+        </div>
+        <div className="bg-card-white rounded-2xl shadow-sm border border-border-gray p-4 hover:shadow-md transition">
+          <h2 className="text-text-gray text-xs font-medium uppercase tracking-wider mb-1">Pending Payouts</h2>
+          <p className="text-2xl font-bold text-orange-500">{stats.payoutsPending}</p>
+        </div>
+        <div className="bg-card-white rounded-2xl shadow-sm border border-border-gray p-4 hover:shadow-md transition border-l-4 border-l-red-400">
+          <h2 className="text-text-gray text-xs font-medium uppercase tracking-wider mb-1">Complaints</h2>
+          <p className="text-2xl font-bold text-red-600">{stats.complaints}</p>
+        </div>
+        <div className="bg-card-white rounded-2xl shadow-sm border border-border-gray p-4 hover:shadow-md transition border-l-4 border-l-red-600">
+          <h2 className="text-text-gray text-xs font-medium uppercase tracking-wider mb-1">Emergency Requests</h2>
+          <p className="text-2xl font-bold text-red-700">{stats.emergencyRequests}</p>
         </div>
       </div>
 

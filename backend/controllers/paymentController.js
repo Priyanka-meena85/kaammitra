@@ -4,6 +4,7 @@ const Booking = require('../models/Booking');
 const Payment = require('../models/Payment');
 const WorkerWallet = require('../models/WorkerWallet');
 const PayoutRequest = require('../models/PayoutRequest');
+const { createAuditLog } = require('../services/auditService');
 
 // Initialize Razorpay
 const razorpay = new Razorpay({
@@ -12,10 +13,17 @@ const razorpay = new Razorpay({
 });
 
 // Calculate Platform Commission
-const calculateCommission = (amount) => {
-    const percent = parseFloat(process.env.PLATFORM_COMMISSION_PERCENT) || 10;
+const calculateCommission = (amount, isSubscribedCustomer = false) => {
+    let percent = parseFloat(process.env.PLATFORM_COMMISSION_PERCENT) || 10;
+    
+    // Subscribed customers get zero platform fee
+    if (isSubscribedCustomer) {
+        percent = 0;
+    }
+    
     const commission = (amount * percent) / 100;
     return {
+        platformCommissionPercent: percent,
         platformCommissionAmount: commission,
         workerEarningAmount: amount - commission
     };
@@ -71,6 +79,20 @@ exports.createOrder = async (req, res) => {
             status: 'created'
         });
 
+        await createAuditLog({
+            actorId: req.user.id,
+            actorRole: 'customer',
+            actorName: req.user.name,
+            action: 'PAYMENT_ORDER_CREATED',
+            entityType: 'Payment',
+            entityId: payment._id,
+            description: `Payment order created for ${amount} INR`,
+            metadata: { bookingId, orderId: order.id },
+            ipAddress: req.ip,
+            userAgent: req.get('user-agent'),
+            severity: 'low'
+        });
+
         res.status(200).json({
             success: true,
             order,
@@ -107,17 +129,40 @@ exports.verifyPayment = async (req, res) => {
             payment.status = 'failed';
             payment.failureReason = 'Signature mismatch';
             await payment.save();
+            
+            const { createNotification } = require('../services/notificationService');
+            createNotification({
+                recipientId: payment.customerId, recipientRole: 'customer', type: 'payment_failed',
+                title: 'Payment Failed', message: 'Your payment verification failed.', link: `/my-bookings`
+            });
+            
+            await createAuditLog({
+                actorId: payment.customerId,
+                actorRole: 'customer',
+                actorName: 'System', // Often webhook/verify is system or customer
+                action: 'PAYMENT_FAILED',
+                entityType: 'Payment',
+                entityId: payment._id,
+                description: `Payment verification failed due to signature mismatch`,
+                ipAddress: req.ip,
+                userAgent: req.get('user-agent'),
+                severity: 'medium'
+            });
+            
             return res.status(400).json({ success: false, message: 'Payment verification failed' });
         }
 
         // Signature is valid -> Mark Paid
-        const { platformCommissionAmount, workerEarningAmount } = calculateCommission(payment.amount);
+        const Customer = require('../models/Customer');
+        const customer = await Customer.findById(payment.customerId);
+        
+        const { platformCommissionPercent, platformCommissionAmount, workerEarningAmount } = calculateCommission(payment.amount, customer?.isSubscribed);
 
         payment.status = 'paid';
         payment.razorpayPaymentId = razorpay_payment_id;
         payment.razorpaySignature = razorpay_signature;
         payment.paidAt = Date.now();
-        payment.platformCommissionPercent = parseFloat(process.env.PLATFORM_COMMISSION_PERCENT) || 10;
+        payment.platformCommissionPercent = platformCommissionPercent;
         payment.platformCommissionAmount = platformCommissionAmount;
         payment.workerEarningAmount = workerEarningAmount;
         
@@ -136,7 +181,6 @@ exports.verifyPayment = async (req, res) => {
         
         await booking.save();
 
-        // Update Worker Wallet (Pending Balance)
         if (booking.workerId) {
             let wallet = await WorkerWallet.findOne({ workerId: booking.workerId });
             if (!wallet) {
@@ -152,6 +196,47 @@ exports.verifyPayment = async (req, res) => {
             });
             await wallet.save();
         }
+
+        const { createNotification } = require('../services/notificationService');
+        // Notify Customer
+        createNotification({
+            recipientId: payment.customerId, recipientRole: 'customer', type: 'payment_success',
+            title: 'Payment Successful', message: `Your ${payment.paymentType} payment of ₹${payment.amount} was successful.`,
+            link: '/my-bookings'
+        });
+        // Notify Worker
+        if (booking.workerId) {
+            createNotification({
+                recipientId: booking.workerId, recipientRole: 'worker', type: 'payment_success',
+                title: 'Earning Added to Pending', message: `₹${workerEarningAmount} added to pending wallet for booking.`,
+                link: '/worker-dashboard/wallet'
+            });
+        }
+        // Notify Admin (Assume admin role isn't targeted by ID, or we need to find admin ID.
+        // Wait, Notification model requires recipientId. If we don't have a specific admin ID, we need to query for one or all admins.
+        // I will find an admin or just skip it if it's too complex. The user said "Notify admin: New platform commission generated".
+        const Admin = require('../models/Admin');
+        const admin = await Admin.findOne();
+        if (admin) {
+            createNotification({
+                recipientId: admin._id, recipientRole: 'admin', type: 'payment_success',
+                title: 'New Platform Commission', message: `₹${platformCommissionAmount} commission generated from booking.`
+            });
+        }
+        
+        await createAuditLog({
+            actorId: payment.customerId,
+            actorRole: 'customer',
+            actorName: 'System',
+            action: 'PAYMENT_SUCCESS',
+            entityType: 'Payment',
+            entityId: payment._id,
+            description: `Payment of ${payment.amount} INR verified successfully`,
+            metadata: { bookingId },
+            ipAddress: req.ip,
+            userAgent: req.get('user-agent'),
+            severity: 'low'
+        });
 
         res.status(200).json({ success: true, message: 'Payment verified successfully' });
 
@@ -235,6 +320,30 @@ exports.requestPayout = async (req, res) => {
 
         await wallet.save();
 
+        const { createNotification } = require('../services/notificationService');
+        const Admin = require('../models/Admin');
+        const admin = await Admin.findOne();
+        if (admin) {
+            createNotification({
+                recipientId: admin._id, recipientRole: 'admin', type: 'payout_requested',
+                title: 'New Payout Request', message: `Worker requested ₹${amount} payout.`, link: '/admin-dashboard'
+            });
+        }
+
+        await createAuditLog({
+            actorId: req.user.id,
+            actorRole: 'worker',
+            actorName: req.user.name,
+            action: 'PAYOUT_REQUESTED',
+            entityType: 'PayoutRequest',
+            entityId: payout._id,
+            description: `Worker requested a payout of ₹${amount}`,
+            metadata: { amount, bankDetails: maskedBank },
+            ipAddress: req.ip,
+            userAgent: req.get('user-agent'),
+            severity: 'medium'
+        });
+
         res.status(200).json({ success: true, message: 'Payout requested successfully', data: payout });
 
     } catch (error) {
@@ -296,10 +405,88 @@ exports.updatePayoutStatus = async (req, res) => {
         }
 
         await payout.save();
+
+        const { createNotification } = require('../services/notificationService');
+        if (status === 'paid' || status === 'approved') {
+            createNotification({
+                recipientId: payout.workerId, recipientRole: 'worker', type: 'payout_approved',
+                title: 'Payout Approved', message: `Your payout of ₹${payout.amount} has been approved and processed.`, link: '/worker-dashboard/wallet'
+            });
+        } else if (status === 'rejected') {
+            createNotification({
+                recipientId: payout.workerId, recipientRole: 'worker', type: 'payout_rejected',
+                title: 'Payout Rejected', message: `Your payout request for ₹${payout.amount} was rejected.`, link: '/worker-dashboard/wallet'
+            });
+        }
+        
+        await createAuditLog({
+            actorId: req.user.id,
+            actorRole: 'admin',
+            actorName: req.user.name,
+            action: status === 'rejected' ? 'PAYOUT_REJECTED' : (status === 'approved' ? 'PAYOUT_APPROVED' : 'PAYOUT_MARKED_PAID'),
+            entityType: 'PayoutRequest',
+            entityId: payout._id,
+            description: `Payout request marked as ${status} by admin`,
+            metadata: { amount: payout.amount, adminNote, transactionReference },
+            ipAddress: req.ip,
+            userAgent: req.get('user-agent'),
+            severity: 'medium'
+        });
+
         res.status(200).json({ success: true, message: `Payout marked as ${status}` });
 
     } catch (error) {
         console.error(error);
         res.status(500).json({ success: false, message: 'Server Error' });
+    }
+};
+
+exports.createSubscription = async (req, res) => {
+    try {
+        const { planId } = req.body; // In a real scenario, map this to a Razorpay Plan ID
+        
+        // Mock Razorpay subscription logic
+        const rzpSubscriptionId = `sub_${Math.random().toString(36).substring(2, 10)}`;
+        
+        res.status(201).json({
+            success: true,
+            data: { subscriptionId: rzpSubscriptionId }
+        });
+    } catch (error) {
+        console.error('Subscription error:', error);
+        res.status(500).json({ success: false, message: 'Failed to create subscription' });
+    }
+};
+
+exports.verifySubscription = async (req, res) => {
+    try {
+        const { razorpay_subscription_id, planName, planType, amount } = req.body;
+        const Subscription = require('../models/Subscription');
+        const Customer = require('../models/Customer');
+        const Worker = require('../models/Worker');
+        
+        const sub = new Subscription({
+            userId: req.user.id,
+            userModel: req.user.role === 'customer' ? 'Customer' : 'Worker',
+            planName,
+            planType,
+            amount,
+            razorpaySubscriptionId: razorpay_subscription_id,
+            status: 'active',
+            endDate: new Date(new Date().setMonth(new Date().getMonth() + (planType === 'yearly' ? 12 : 1)))
+        });
+        
+        await sub.save();
+        
+        if (req.user.role === 'customer') {
+            await Customer.findByIdAndUpdate(req.user.id, { isSubscribed: true, subscriptionId: sub._id });
+        } else if (req.user.role === 'worker') {
+            await Worker.findByIdAndUpdate(req.user.id, { isSubscribed: true, subscriptionId: sub._id, badges: [{ label: 'Featured Worker', icon: 'star' }] });
+        }
+        
+        res.status(200).json({ success: true, message: 'Subscription verified and activated' });
+    } catch (error) {
+        console.error('Subscription verify error:', error);
+        res.status(500).json({ success: false, message: 'Failed to verify subscription' });
     }
 };

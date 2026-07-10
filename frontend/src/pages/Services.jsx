@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import { Search, MapPin, AlertTriangle, ShieldCheck, Phone, Star, UserCheck, MessageCircle } from 'lucide-react';
 import ServiceCard from '../components/ServiceCard';
 import { services } from '../data/services';
@@ -44,6 +45,10 @@ const Services = () => {
 
   return (
     <div className="flex flex-col min-h-screen bg-bg-warm">
+      <Helmet>
+        <title>All Services | KaamMitra</title>
+        <meta name="description" content="Explore a wide range of services offered by local professionals on KaamMitra." />
+      </Helmet>
       
       {/* 1. Hero Section */}
       <section className="bg-gradient-to-br from-blue-900 to-blue-700 text-white py-16 md:py-24 px-4 relative overflow-hidden">

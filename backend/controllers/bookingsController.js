@@ -1,4 +1,6 @@
 const Booking = require('../models/Booking');
+const MatchEvent = require('../models/MatchEvent');
+const { createAuditLog } = require('../services/auditService');
 
 exports.createBooking = async (req, res) => {
     try {
@@ -29,7 +31,7 @@ exports.createBooking = async (req, res) => {
 
         const booking = await Booking.create(req.body);
 
-        // Emit live update via Socket.io
+        // Emit live update via Socket.io and Notification
         const socketConfig = require('../socket');
         const io = socketConfig.getIo();
         const onlineUsers = socketConfig.getOnlineUsers();
@@ -39,6 +41,39 @@ exports.createBooking = async (req, res) => {
                 io.to(targetSocketId).emit('new_booking_received', { bookingId: booking._id, customerId: booking.customerId });
             }
         }
+
+        const { createNotification } = require('../services/notificationService');
+        createNotification({
+            recipientId: booking.workerId,
+            recipientRole: 'worker',
+            type: 'booking_created',
+            title: 'New Booking Request',
+            message: 'You have a new booking request. Please check and respond.',
+            link: '/worker-dashboard',
+            io
+        });
+        createNotification({
+            recipientId: booking.customerId,
+            recipientRole: 'customer',
+            type: 'booking_created',
+            title: 'Booking Request Sent',
+            message: 'Your booking request has been sent to the worker.',
+            link: '/my-bookings',
+            io
+        });
+
+        await createAuditLog({
+            actorId: req.user.id,
+            actorRole: req.user.role,
+            actorName: req.user.name || 'Customer',
+            action: 'BOOKING_CREATED',
+            entityType: 'Booking',
+            entityId: booking._id,
+            description: `Booking request sent to worker ${booking.workerId}`,
+            ipAddress: req.ip,
+            userAgent: req.get('user-agent'),
+            severity: 'low'
+        });
 
         res.status(201).json({ success: true, data: booking });
     } catch (err) {
@@ -107,6 +142,20 @@ exports.updateBookingStatus = async (req, res) => {
 
         if (req.user.role !== 'admin' || true) { // Enforce state machine for admin as well per requirements
             if (!validTransitions[currentStatus] || !validTransitions[currentStatus].includes(status)) {
+                
+                await createAuditLog({
+                    actorId: req.user.id,
+                    actorRole: req.user.role,
+                    actorName: req.user.name,
+                    action: 'INVALID_BOOKING_STATUS_TRANSITION',
+                    entityType: 'Booking',
+                    entityId: booking._id,
+                    description: `Attempted invalid transition from ${currentStatus} to ${status}`,
+                    ipAddress: req.ip,
+                    userAgent: req.get('user-agent'),
+                    severity: 'medium'
+                });
+                
                 return res.status(400).json({ success: false, message: 'Invalid status transition' });
             }
         }
@@ -164,6 +213,51 @@ exports.updateBookingStatus = async (req, res) => {
             }
         }
 
+        const { createNotification } = require('../services/notificationService');
+        let type, title, message;
+        let notifyCustomer = false, notifyWorker = false;
+        
+        if (status === 'Accepted') {
+            notifyCustomer = true; type = 'booking_accepted'; title = 'Booking Accepted'; message = 'Your booking request was accepted by the worker.';
+        } else if (status === 'Rejected') {
+            notifyCustomer = true; type = 'booking_rejected'; title = 'Booking Rejected'; message = 'Your booking request was rejected by the worker.';
+        } else if (status === 'On the Way') {
+            notifyCustomer = true; type = 'booking_on_the_way'; title = 'Worker on the way'; message = 'The worker is on the way to your location.';
+        } else if (status === 'In Progress') {
+            notifyCustomer = true; type = 'booking_in_progress'; title = 'Job In Progress'; message = 'Your job is now in progress.';
+        } else if (status === 'Completed') {
+            notifyCustomer = true; notifyWorker = true; type = 'booking_completed'; title = 'Job Completed'; message = 'Your job has been marked as completed.';
+        } else if (status === 'Cancelled') {
+            notifyWorker = true; type = 'booking_cancelled'; title = 'Booking Cancelled'; message = 'The customer has cancelled the booking.';
+        }
+
+        if (notifyCustomer) {
+            createNotification({
+                recipientId: booking.customerId, recipientRole: 'customer', type, title, message, link: '/my-bookings', io
+            });
+        }
+        if (notifyWorker) {
+            createNotification({
+                recipientId: booking.workerId, recipientRole: 'worker', type, title, 
+                message: status === 'Completed' ? 'Job marked as completed.' : message, 
+                link: '/worker-dashboard', io
+            });
+        }
+        
+        await createAuditLog({
+            actorId: req.user.id,
+            actorRole: req.user.role,
+            actorName: req.user.name,
+            action: 'BOOKING_STATUS_UPDATED',
+            entityType: 'Booking',
+            entityId: booking._id,
+            description: `Booking status updated to ${status}`,
+            metadata: { prevStatus: currentStatus, newStatus: status },
+            ipAddress: req.ip,
+            userAgent: req.get('user-agent'),
+            severity: 'low'
+        });
+
         res.status(200).json({ success: true, data: booking });
     } catch (err) {
         res.status(400).json({ success: false, error: err.message });
@@ -219,6 +313,20 @@ exports.suggestWorkers = async (req, res) => {
 
         rankedWorkers.sort((a, b) => b.matchScore - a.matchScore);
         const suggested = rankedWorkers.slice(0, 5); // Return top 5
+        
+        // Log MatchEvent
+        if (req.user) {
+            MatchEvent.create({
+                customerId: req.user.id,
+                service: service || 'Any',
+                city: city || 'Any',
+                area: area || 'Any',
+                urgency: urgency === 'emergency',
+                resultsCount: suggested.length,
+                topWorkerId: suggested.length > 0 ? suggested[0].worker._id : null,
+                topScore: suggested.length > 0 ? suggested[0].matchScore : 0
+            }).catch(e => console.error('MatchEvent Error:', e));
+        }
 
         res.status(200).json({ success: true, count: suggested.length, data: suggested });
     } catch (err) {

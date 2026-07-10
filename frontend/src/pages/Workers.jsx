@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import { Filter, Search, MapPin } from 'lucide-react';
 import WorkerCard from '../components/WorkerCard';
 import { workers as dummyWorkers } from '../data/workers';
@@ -9,12 +10,14 @@ import toast from 'react-hot-toast';
 import EmptyState from '../components/EmptyState';
 import { calculateMatchingScore } from '../utils/matchingScore';
 import { useSimpleMode } from '../context/SimpleModeContext';
+import { useAuth } from '../context/AuthContext';
 import { extractArray } from '../utils/apiResponse';
 
 const Workers = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { isSimpleMode } = useSimpleMode();
+  const { user } = useAuth();
   const serviceQuery = searchParams.get('service') || '';
   
   const [searchTerm, setSearchTerm] = useState(serviceQuery);
@@ -61,6 +64,7 @@ const Workers = () => {
         if (selectedService || searchTerm) queryParams.append('service', selectedService || searchTerm);
         if (selectedArea && selectedArea !== 'All') queryParams.append('city', selectedArea); // Usually city maps to area dropdown in old code
         if (emergencyAvailableOnly) queryParams.append('urgency', 'emergency');
+        if (user && user.role === 'customer') queryParams.append('customerId', user._id);
         
         const qStr = queryParams.toString();
         if (qStr) url += `?${qStr}`;
@@ -135,6 +139,11 @@ const Workers = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <Helmet>
+        <title>{selectedService ? `${selectedService} Workers | KaamMitra` : 'Find Local Workers | KaamMitra'}</title>
+        <meta name="description" content="Browse and hire trusted local workers for your everyday needs." />
+      </Helmet>
+      
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-navy mb-2">
           {selectedService ? `Workers for ${selectedService}` : 'Find Workers near you'}

@@ -6,10 +6,13 @@ import toast from 'react-hot-toast';
 import { workers as dummyWorkers } from '../data/workers';
 import RatingModal from '../components/RatingModal';
 import { useAuth } from '../context/AuthContext';
+import { Helmet } from 'react-helmet-async';
 import { useSimpleMode } from '../context/SimpleModeContext';
 import { speakText } from '../utils/speech';
 import { Volume2 } from 'lucide-react';
 import { extractObject, extractArray } from '../utils/apiResponse';
+import { getWorkerReviews, reportReview } from '../api/reviewApi';
+import SafetyReportModal from '../components/SafetyReportModal';
 
 const WorkerProfile = () => {
   const { id } = useParams();
@@ -19,9 +22,11 @@ const WorkerProfile = () => {
   
   const [worker, setWorker] = useState(null);
   const [ratings, setRatings] = useState([]);
+  const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [apiError, setApiError] = useState(null);
   const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
+  const [isSafetyModalOpen, setIsSafetyModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchWorker = async () => {
@@ -29,12 +34,12 @@ const WorkerProfile = () => {
         const res = await api.get(`/workers/${id}`);
         setWorker(extractObject(res, ["worker"]));
         
-        // Fetch ratings if possible
+        // Fetch reviews
         try {
-            const ratingRes = await api.get(`/ratings/worker/${id}`);
-            setRatings(extractArray(ratingRes, ["ratings"]));
+            const reviewRes = await getWorkerReviews(id);
+            setReviews(reviewRes.data?.data?.reviews || []);
         } catch(e) {
-            console.log('No ratings found or error fetching ratings');
+            console.log('No reviews found');
         }
 
       } catch (err) {
@@ -76,7 +81,18 @@ const WorkerProfile = () => {
       </div>
     </div>
   );
-  if (!worker) return null;
+  if (!worker) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
+        <Helmet>
+          <title>Worker Not Found | KaamMitra</title>
+        </Helmet>
+        <div className="bg-red-50 text-red-600 p-4 rounded-full mb-4">
+          <AlertTriangle size={48} />
+        </div>
+      </div>
+    );
+  }
 
   // Normalize fields
   const name = worker?.name || 'Worker Name';
@@ -86,7 +102,9 @@ const WorkerProfile = () => {
   const price = worker?.expectedCharge || worker?.startingPrice || 0;
   const rating = worker?.averageRating || worker?.rating || 0;
   const jobs = worker?.completedJobs || worker?.jobs || 0;
-  
+  const trustScore = worker?.trustScore || 50;
+  const badges = worker?.badges || [];
+  const riskLevel = worker?.riskLevel || 'low';
   
   const handleCallWorker = async () => {
     try {
@@ -138,15 +156,25 @@ const WorkerProfile = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-bg-warm">
+      <Helmet>
+        <title>{`${worker.name} - ${service} | KaamMitra`}</title>
+        <meta name="description" content={`Hire ${name}, a verified professional in ${worker.address || worker.area || 'your area'}. Average rating: ${rating || 0}.`} />
+      </Helmet>
+
       <div className="bg-card-white rounded-3xl shadow-sm border border-border-gray overflow-hidden mb-8">
         {/* Header */}
         <div className="bg-bg-soft-blue p-8 relative">
-           {isVerified && (
-              <div className="absolute top-4 right-4 bg-white/90 text-accent-green px-4 py-2 rounded-full font-bold shadow-sm flex items-center gap-2">
-                <ShieldCheck size={18} /> Verified Background
-              </div>
-           )}
+           <div className="absolute top-4 right-4 flex flex-col items-end gap-2">
+             {isVerified && (
+                <div className="bg-white/90 text-accent-green px-4 py-2 rounded-full font-bold shadow-sm flex items-center gap-2">
+                  <ShieldCheck size={18} /> Verified Background
+                </div>
+             )}
+             <div className="bg-white/90 text-blue-600 px-4 py-2 rounded-full font-bold shadow-sm flex items-center gap-2">
+               Trust Score: {trustScore}/100
+             </div>
+           </div>
            <div className="flex flex-col md:flex-row gap-6 items-center md:items-start text-center md:text-left">
               <img 
                 src={worker.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=315D9C&color=fff&size=150`}
@@ -212,26 +240,56 @@ const WorkerProfile = () => {
                         </div>
                     </div>
 
+                    {/* Dynamic Badges */}
+                    {badges.length > 0 && (
+                        <div className="mb-6">
+                            <h2 className="text-xl font-bold text-navy mb-4">Worker Badges</h2>
+                            <div className="flex flex-wrap gap-3">
+                                {badges.map((badge, idx) => (
+                                    <div key={idx} className="flex items-center gap-2 px-3 py-1.5 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-full text-sm font-bold shadow-sm">
+                                        <Star size={14} className="fill-yellow-500 text-yellow-500"/> {badge.label}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
                     {/* Reviews */}
                     <div>
                         <div className="flex justify-between items-center mb-6">
                             <h2 className="text-xl font-bold text-navy">Customer Reviews</h2>
-                            <button onClick={() => setIsRatingModalOpen(true)} className="text-primary font-bold hover:underline">Write a Review</button>
                         </div>
-                        {(Array.isArray(ratings) ? ratings : []).length === 0 ? (
+                        {reviews.length === 0 ? (
                             <div className="text-center py-8 bg-gray-50 rounded-2xl border border-dashed border-gray-300">
-                                <Star size={32} className="mx-auto text-gray-400 mb-2" />
-                                <p className="text-gray-500">No reviews yet. Be the first to rate {name}!</p>
+                                <MessageCircle size={32} className="mx-auto text-gray-400 mb-2" />
+                                <p className="text-gray-500">No verified reviews yet.</p>
                             </div>
                         ) : (
                             <div className="space-y-4">
-                                {(Array.isArray(ratings) ? ratings : []).map((r, i) => (
-                                    <div key={i} className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+                                {reviews.map((r, i) => (
+                                    <div key={i} className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm relative">
                                         <div className="flex items-center justify-between mb-2">
-                                            <span className="font-bold text-navy">{r?.customerId?.name || 'Customer'}</span>
-                                            <span className="flex items-center gap-1 text-sm font-bold text-yellow-600"><Star size={14} className="fill-yellow-500" /> {r?.rating}</span>
+                                            <span className="font-bold text-navy">{r.reviewerId?.name || 'Customer'}</span>
+                                            <span className="flex items-center gap-1 text-sm font-bold text-yellow-600"><Star size={14} className="fill-yellow-500" /> {r.rating}</span>
                                         </div>
-                                        {r?.review && <p className="text-gray-600 text-sm">{r.review}</p>}
+                                        {r.isVerifiedBooking && <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded font-semibold mb-2 inline-block">✓ Verified Booking</span>}
+                                        {r.title && <p className="font-bold text-gray-800 text-sm mb-1">{r.title}</p>}
+                                        {r.comment && <p className="text-gray-600 text-sm mb-3">{r.comment}</p>}
+                                        {r.tags && r.tags.length > 0 && (
+                                            <div className="flex flex-wrap gap-1 mb-2">
+                                                {r.tags.map(t => (
+                                                    <span key={t} className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">{t.replace('_', ' ')}</span>
+                                                ))}
+                                            </div>
+                                        )}
+                                        <button 
+                                            onClick={() => {
+                                                reportReview(r._id).then(() => toast.success('Review reported'));
+                                            }}
+                                            className="text-xs text-red-500 hover:underline absolute bottom-4 right-4"
+                                        >
+                                            Report
+                                        </button>
                                     </div>
                                 ))}
                             </div>
@@ -284,6 +342,11 @@ const WorkerProfile = () => {
                                     </button>
                                 </div>
                             )}
+                            
+                            <div className="pt-4 border-t border-gray-200 text-center">
+                                <p className="text-xs text-gray-500 mb-2">Notice any suspicious activity?</p>
+                                <button onClick={() => setIsSafetyModalOpen(true)} className="text-red-500 text-sm font-bold hover:underline">Report Profile</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -296,6 +359,13 @@ const WorkerProfile = () => {
         onClose={() => setIsRatingModalOpen(false)} 
         onSubmit={handleRatingSubmit} 
         workerName={name} 
+      />
+
+      <SafetyReportModal
+        isOpen={isSafetyModalOpen}
+        onClose={() => setIsSafetyModalOpen(false)}
+        targetId={worker._id || id}
+        targetRole="worker"
       />
     </div>
   );

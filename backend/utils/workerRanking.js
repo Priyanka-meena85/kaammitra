@@ -15,13 +15,16 @@ exports.calculateWorkerScore = (worker, searchParams = {}) => {
         completion: 0,
         responseTime: 0,
         emergencyBoost: 0,
-        budget: 0
+        budget: 0,
+        subscriptionBoost: 0,
+        collaborativeBoost: 0,
+        recencyBoost: 0
     };
     let primaryReason = '';
 
     // Blocked workers get 0 immediately
-    if (worker.isBlocked) {
-        return { score: 0, breakdown, matchReason: 'Blocked worker' };
+    if (worker.isBlocked || worker.riskLevel === 'critical') {
+        return { score: 0, breakdown, matchReason: 'Blocked or high-risk worker' };
     }
 
     // Safely parse values
@@ -33,6 +36,7 @@ exports.calculateWorkerScore = (worker, searchParams = {}) => {
     const expCharge = worker.expectedCharge || null;
     const isAvail = worker.isAvailable || false;
     const isVerif = worker.isVerified || false;
+    const trustScore = worker.trustScore || 50;
 
     // A. Service match: 25 points
     if (searchParams.service) {
@@ -79,12 +83,26 @@ exports.calculateWorkerScore = (worker, searchParams = {}) => {
 
     // D. Verification and trust: 15 points
     if (isVerif) {
-        breakdown.verification = 10;
-        if (worker.verificationStatus === 'Verified' || worker.verificationStatus === 'Active') {
-            breakdown.verification = 15;
-            if (!primaryReason) primaryReason = 'Verified and highly rated';
-        }
+        breakdown.verification = 5;
     }
+    
+    // Add trustScore factor (max 10 points)
+    if (trustScore >= 85) {
+        breakdown.verification += 10;
+        if (!primaryReason) primaryReason = 'Trusted Pro with high completion rate';
+    } else if (trustScore >= 70) {
+        breakdown.verification += 7;
+        if (!primaryReason) primaryReason = 'Verified worker with low complaint rate';
+    } else if (trustScore >= 50) {
+        breakdown.verification += 3;
+    } else {
+        breakdown.verification -= 10;
+    }
+    
+    if (worker.riskLevel === 'high') {
+        breakdown.verification -= 30; // Rank very low
+    }
+    
     score += breakdown.verification;
 
     // E. Rating: 10 points
@@ -126,6 +144,30 @@ exports.calculateWorkerScore = (worker, searchParams = {}) => {
     }
     score += breakdown.budget;
 
+    // J. Subscription Boost: 20 points
+    if (worker.isSubscribed) {
+        breakdown.subscriptionBoost = 20;
+        primaryReason = 'Premium Featured Worker';
+    }
+    score += breakdown.subscriptionBoost;
+
+    // K. Collaborative Filtering Boost: 25 points
+    if (searchParams.pastBookedWorkers && searchParams.pastBookedWorkers.includes(worker._id.toString())) {
+        breakdown.collaborativeBoost = 25;
+        primaryReason = 'You successfully booked this worker before';
+    }
+    score += breakdown.collaborativeBoost;
+
+    // L. Recency Boost: 5 points
+    if (worker.updatedAt) {
+        const hoursSinceUpdate = (new Date() - new Date(worker.updatedAt)) / (1000 * 60 * 60);
+        if (hoursSinceUpdate <= 48) {
+            breakdown.recencyBoost = 5;
+            if (!primaryReason) primaryReason = 'Recently active and ready to work';
+        }
+    }
+    score += breakdown.recencyBoost;
+
     // Clamp score
     score = Math.max(0, Math.min(100, score));
 
@@ -134,7 +176,7 @@ exports.calculateWorkerScore = (worker, searchParams = {}) => {
         if (breakdown.location >= 15 && breakdown.availability >= 10) {
             primaryReason = 'Best match because this worker is available and in your area.';
         } else if (breakdown.rating >= 8) {
-            primaryReason = 'Good match because this worker has a high rating.';
+            primaryReason = 'Top rated worker in your area';
         } else {
             primaryReason = 'Recommended match';
         }

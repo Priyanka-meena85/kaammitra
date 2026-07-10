@@ -53,7 +53,31 @@ const CustomerSchema = new mongoose.Schema({
     role: {
         type: String,
         default: 'customer'
-    }
+    },
+    reliabilityScore: {
+        type: Number,
+        default: 100
+    },
+    customerMetrics: {
+        totalBookings: { type: Number, default: 0 },
+        completedBookings: { type: Number, default: 0 },
+        cancelledBookings: { type: Number, default: 0 },
+        noShowCount: { type: Number, default: 0 },
+        complaintCount: { type: Number, default: 0 },
+        paymentIssueCount: { type: Number, default: 0 }
+    },
+    riskLevel: {
+        type: String,
+        enum: ['low', 'medium', 'high', 'critical'],
+        default: 'low'
+    },
+    isFlagged: {
+        type: Boolean,
+        default: false
+    },
+    flagReasons: [{
+        type: String
+    }]
 }, {
     timestamps: true
 });

@@ -23,7 +23,11 @@ module.exports = (io) => {
 
     io.on('connection', (socket) => {
         const userId = socket.user.id;
+        const userRole = socket.user.role;
         onlineUsers.set(userId, socket.id);
+        
+        // Join notification room for this specific user
+        socket.join(`${userRole}:${userId}`);
         
         // Broadcast user online
         io.emit('user_online', { userId });
@@ -82,6 +86,15 @@ module.exports = (io) => {
 
                 // Broadcast to room
                 io.to(conversationId).emit('receive_message', { conversationId, message: newMessage });
+
+                const receiverId = socket.user.role === 'customer' ? wId : cId;
+                const receiverRole = socket.user.role === 'customer' ? 'worker' : 'customer';
+                const { createNotification } = require('./services/notificationService');
+                
+                createNotification({
+                    recipientId: receiverId, recipientRole: receiverRole, type: 'chat_message',
+                    title: 'New Message', message: 'You have a new message.', link: `/chat/${conversationId}`, io
+                });
             } catch (err) {
                 console.error('Send message error:', err);
                 socket.emit('error', { message: 'Failed to send message' });
@@ -117,6 +130,19 @@ module.exports = (io) => {
             } catch (err) {
                 console.error('Mark read error:', err);
             }
+        });
+
+        // Geolocation Tracking
+        socket.on('subscribe_location', ({ bookingId }) => {
+            socket.join(`location_${bookingId}`);
+        });
+
+        socket.on('unsubscribe_location', ({ bookingId }) => {
+            socket.leave(`location_${bookingId}`);
+        });
+
+        socket.on('location_update', ({ bookingId, location }) => {
+            socket.to(`location_${bookingId}`).emit('worker_location_update', { bookingId, location });
         });
 
         socket.on('disconnect', () => {

@@ -1,7 +1,9 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
+import { HelmetProvider } from 'react-helmet-async';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
+import InstallAppPrompt from './components/InstallAppPrompt';
 import { useAuth } from './context/AuthContext';
 import { useSocket } from './context/SocketContext';
 import toast from 'react-hot-toast';
@@ -59,6 +61,12 @@ import WorkerOnboarding from './pages/WorkerOnboarding';
 import CustomerDashboard from './pages/CustomerDashboard';
 import WorkerDashboard from './pages/WorkerDashboard';
 import AdminDashboard from './pages/AdminDashboard';
+import AdminAnalytics from './pages/admin/AdminAnalytics';
+import AdminReports from './pages/admin/AdminReports';
+import AdminAuditLogs from './pages/admin/AdminAuditLogs';
+import AdminTrustSafety from './pages/admin/AdminTrustSafety';
+import Notifications from './pages/Notifications';
+import NotificationSettings from './pages/NotificationSettings';
 import { Toaster } from 'react-hot-toast';
 
 // AuthInterceptor component to handle navigation
@@ -84,45 +92,56 @@ const AuthInterceptor = () => {
 
 function App() {
   return (
-    <Router>
-      <AuthInterceptor />
-      <LiveBookingToasts />
-      <div className="flex flex-col min-h-screen bg-bg-warm">
-        <Toaster position="top-center" />
-        <Navbar />
-        <main className="flex-grow">
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/services" element={<Services />} />
-            <Route path="/how-it-works" element={<HowItWorks />} />
-            
-            {/* Auth */}
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/worker-register" element={<WorkerRegister />} />
-            
-            {/* Workers & Booking */}
-            <Route path="/workers" element={<Workers />} />
-            <Route path="/worker/:id" element={<WorkerProfile />} />
-            <Route path="/booking" element={<BookingForm />} />
-            <Route path="/booking/:workerId" element={<BookingForm />} />
-            <Route path="/my-bookings" element={<MyBookings />} />
-            <Route path="/chat/:workerId" element={<Chat />} />
-            <Route path="/emergency" element={<Emergency />} />
-            <Route path="/area-launch" element={<AreaLaunch />} />
-            <Route path="/callback-request" element={<CallbackRequest />} />
-            <Route path="/pricing" element={<Pricing />} />
-            <Route path="/worker-onboarding" element={<WorkerOnboarding />} />
+    <HelmetProvider>
+      <Router>
+        <AuthInterceptor />
+        <LiveBookingToasts />
+        <InstallAppPrompt />
+        <div className="flex flex-col min-h-screen bg-bg-warm">
+          <Toaster position="top-center" />
+          <Navbar />
+          <main className="flex-grow">
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/services" element={<Services />} />
+              <Route path="/how-it-works" element={<HowItWorks />} />
+              
+              {/* Auth */}
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/worker-register" element={<WorkerRegister />} />
+              
+              {/* Workers & Booking */}
+              <Route path="/workers" element={<Workers />} />
+              <Route path="/worker/:id" element={<WorkerProfile />} />
+              <Route path="/booking" element={<BookingForm />} />
+              <Route path="/booking/:workerId" element={<BookingForm />} />
+              <Route path="/my-bookings" element={<MyBookings />} />
+              <Route path="/chat/:workerId" element={<Chat />} />
+              <Route path="/emergency" element={<Emergency />} />
+              <Route path="/area-launch" element={<AreaLaunch />} />
+              <Route path="/callback-request" element={<CallbackRequest />} />
+              <Route path="/pricing" element={<Pricing />} />
+              <Route path="/worker-onboarding" element={<WorkerOnboarding />} />
 
-            {/* Dashboards */}
-            <Route path="/customer-dashboard" element={<CustomerDashboard />} />
-            <Route path="/worker-dashboard" element={<WorkerDashboard />} />
-            <Route path="/admin" element={<AdminDashboard />} />
-          </Routes>
-        </main>
-        <Footer />
-      </div>
-    </Router>
+              {/* Dashboards */}
+              <Route path="/customer-dashboard" element={<CustomerDashboard />} />
+              <Route path="/worker-dashboard" element={<WorkerDashboard />} />
+              <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/admin/analytics" element={<AdminAnalytics />} />
+              <Route path="/admin/reports" element={<AdminReports />} />
+              <Route path="/admin/audit-logs" element={<AdminAuditLogs />} />
+              <Route path="/admin/trust-safety" element={<AdminTrustSafety />} />
+
+              {/* Notifications */}
+              <Route path="/notifications" element={<Notifications />} />
+              <Route path="/notification-settings" element={<NotificationSettings />} />
+            </Routes>
+          </main>
+          <Footer />
+        </div>
+      </Router>
+    </HelmetProvider>
   );
 }
 

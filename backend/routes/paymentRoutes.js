@@ -8,9 +8,11 @@ const {
     getWorkerWallet,
     requestPayout,
     getAdminPayouts,
-    updatePayoutStatus
+    updatePayoutStatus,
+    createSubscription,
+    verifySubscription
 } = require('../controllers/paymentController');
-const { protect, authorize } = require('../middleware/auth');
+const { protect, authorize } = require('../middlewares/auth');
 
 // Customer Routes
 router.post('/create-order', protect, authorize('customer'), createOrder);
@@ -26,6 +28,8 @@ router.get('/admin/payouts', protect, authorize('admin'), getAdminPayouts);
 router.patch('/admin/payouts/:id', protect, authorize('admin'), updatePayoutStatus);
 
 // Shared Routes
+router.post('/subscription/create', protect, createSubscription);
+router.post('/subscription/verify', protect, verifySubscription);
 router.get('/booking/:bookingId', protect, getBookingPayments);
 
 module.exports = router;

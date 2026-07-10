@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Briefcase, IndianRupee, Settings, User, CheckCircle, XCircle, PhoneCall, MessageCircle, AlertCircle, Clock } from 'lucide-react';
+import { Briefcase, IndianRupee, Settings, User, CheckCircle, XCircle, PhoneCall, MessageCircle, AlertCircle, Clock, Bell } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import api from '../utils/api';
 import toast from 'react-hot-toast';
+import { useSocket } from '../context/SocketContext';
 import EmptyState from '../components/EmptyState';
 import { extractArray } from '../utils/apiResponse';
 
 const WorkerDashboard = () => {
   const navigate = useNavigate();
   const { user, logout, loading: authLoading } = useAuth();
+  const { socket } = useSocket();
   
   const [workerData, setWorkerData] = useState(null);
   const [bookings, setBookings] = useState([]);
@@ -45,6 +46,38 @@ const WorkerDashboard = () => {
     };
     fetchData();
   }, [user]);
+
+  // Handle Location Broadcast
+  useEffect(() => {
+    let watchId = null;
+    const onTheWayBookings = (Array.isArray(bookings) ? bookings : []).filter(b => b.status === 'On the Way');
+    
+    if (onTheWayBookings.length > 0 && socket) {
+        if ('geolocation' in navigator) {
+            watchId = navigator.geolocation.watchPosition(
+                (position) => {
+                    const location = { lat: position.coords.latitude, lng: position.coords.longitude };
+                    onTheWayBookings.forEach(booking => {
+                        socket.emit('location_update', { bookingId: booking._id, location });
+                    });
+                },
+                (error) => {
+                    console.error("Error watching location: ", error);
+                    toast.error("Location tracking failed. Please enable location permissions.");
+                },
+                { enableHighAccuracy: true, maximumAge: 10000, timeout: 5000 }
+            );
+        } else {
+            toast.error("Geolocation is not supported by your browser");
+        }
+    }
+
+    return () => {
+        if (watchId !== null && 'geolocation' in navigator) {
+            navigator.geolocation.clearWatch(watchId);
+        }
+    };
+  }, [bookings, socket]);
 
   const handleBookingStatus = async (id, status) => {
     try {
@@ -174,6 +207,16 @@ const WorkerDashboard = () => {
             {workerData.areaVerified && <CheckCircle size={14}/>} Area
           </div>
         </div>
+        
+        {workerData.riskLevel === 'high' || workerData.riskLevel === 'critical' ? (
+          <div className="bg-red-50 border-b border-red-200 p-4 px-6 flex items-start gap-3">
+             <AlertCircle className="text-red-600 mt-0.5" size={20} />
+             <div>
+                <p className="font-bold text-red-800">Account at Risk</p>
+                <p className="text-sm text-red-700">Your trust score is dangerously low or you have multiple recent complaints. Improve your service quality immediately to avoid permanent suspension.</p>
+             </div>
+          </div>
+        ) : null}
       </div>
 
       <div className="grid md:grid-cols-3 gap-8">
@@ -226,10 +269,23 @@ const WorkerDashboard = () => {
               <div>
                 <div className="flex justify-between text-sm mb-1">
                   <span>Trust Score</span>
-                  <span className="font-bold text-green-600">{workerData.trustScore}/100</span>
+                  <span className={`font-bold ${workerData.trustScore < 40 ? 'text-red-600' : 'text-green-600'}`}>{workerData.trustScore}/100</span>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2"><div className="bg-green-500 h-2 rounded-full" style={{width: `${workerData.trustScore}%`}}></div></div>
+                <div className="w-full bg-gray-200 rounded-full h-2"><div className={`${workerData.trustScore < 40 ? 'bg-red-500' : 'bg-green-500'} h-2 rounded-full`} style={{width: `${workerData.trustScore}%`}}></div></div>
               </div>
+              
+              {workerData.badges && workerData.badges.length > 0 && (
+                <div className="pt-3 border-t border-gray-100">
+                  <span className="text-sm font-medium text-navy block mb-2">My Badges</span>
+                  <div className="flex flex-wrap gap-2">
+                      {workerData.badges.map((badge, idx) => (
+                          <span key={idx} className="bg-yellow-50 text-yellow-700 border border-yellow-200 px-2 py-1 rounded text-xs font-bold">
+                              {badge.label}
+                          </span>
+                      ))}
+                  </div>
+                </div>
+              )}
               <div className="flex justify-between items-center border-t border-gray-100 pt-3">
                 <span className="text-text-gray">Completed Jobs</span>
                 <span className="font-bold">{completedJobs}</span>
@@ -239,6 +295,14 @@ const WorkerDashboard = () => {
                 <span className="font-bold flex items-center gap-1"><Star size={16} className="text-yellow-400 fill-yellow-400"/> {workerData.averageRating || 'New'}</span>
               </div>
             </div>
+          </div>
+
+          <div className="bg-card-white rounded-2xl shadow-sm border border-border-gray p-6">
+            <h2 className="text-xl font-bold text-navy mb-4">Notification Center</h2>
+            <p className="text-sm text-text-gray mb-4">Stay updated with instant alerts.</p>
+            <button onClick={() => navigate('/notifications')} className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-lg font-bold transition flex justify-center items-center gap-2">
+               <Bell size={18} /> View Notifications
+            </button>
           </div>
         </div>
 
@@ -323,9 +387,17 @@ const WorkerDashboard = () => {
                           <span className="text-xs bg-primary text-white px-2 py-1 rounded font-bold">{b.status}</span>
                         </div>
                         
-                        <div className="flex flex-wrap gap-2 pt-2 border-t border-blue-100">
+                        <div className="flex flex-wrap gap-2 pt-2 border-t border-blue-100 mt-3">
                           {b.status === 'Accepted' && <button onClick={() => handleBookingStatus(b._id, 'On the Way')} className="bg-primary text-white px-4 py-2 text-sm rounded-lg font-bold shadow-sm">Start Journey (On the Way)</button>}
-                          {b.status === 'On the Way' && <button onClick={() => handleBookingStatus(b._id, 'In Progress')} className="bg-accent-orange text-white px-4 py-2 text-sm rounded-lg font-bold shadow-sm">Start Work</button>}
+                          {b.status === 'On the Way' && (
+                             <div className="w-full">
+                                <div className="bg-orange-100 text-orange-800 text-xs px-3 py-2 rounded mb-2 flex items-center gap-2">
+                                  <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>
+                                  Broadcasting live location to customer...
+                                </div>
+                                <button onClick={() => handleBookingStatus(b._id, 'In Progress')} className="bg-accent-orange text-white px-4 py-2 text-sm rounded-lg font-bold shadow-sm">Start Work</button>
+                             </div>
+                          )}
                           {b.status === 'In Progress' && <button onClick={() => handleBookingStatus(b._id, 'Completed')} className="bg-accent-green text-white px-4 py-2 text-sm rounded-lg font-bold shadow-sm">Mark Completed</button>}
                         </div>
                       </div>
