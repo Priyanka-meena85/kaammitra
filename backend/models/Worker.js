@@ -2,6 +2,15 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 
 const WorkerSchema = new mongoose.Schema({
+    firebaseUid: {
+        type: String,
+        unique: true,
+        sparse: true
+    },
+    isPhoneVerified: {
+        type: Boolean,
+        default: false
+    },
     name: {
         type: String,
         required: [true, 'Please add a name']

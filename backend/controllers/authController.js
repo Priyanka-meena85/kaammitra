@@ -2,7 +2,7 @@ const Customer = require('../models/Customer');
 const Worker = require('../models/Worker');
 const Admin = require('../models/Admin');
 const jwt = require('jsonwebtoken');
-const otpService = require('../services/otpService');
+const admin = require('../config/firebase');
 
 const sendTokenResponse = (user, statusCode, res) => {
     const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
@@ -17,28 +17,47 @@ const sendTokenResponse = (user, statusCode, res) => {
 exports.register = async (req, res) => {
     try {
         const { 
-            role, name, phone, password, services, location, address, city, area, phoneVerified, 
+            role, name, idToken, password, services, location, address, city, area,
             expectedCharge, skills, experience, workingHoursStart, workingHoursEnd, 
             emergencyAvailable, maxTravelDistance,
             profilePhotoUrl, profilePhotoPublicId, idDocumentUrl, idDocumentPublicId,
             addressProofUrl, addressProofPublicId, documentType
         } = req.body;
 
-        if (!phone || !phoneVerified) {
-            return res.status(400).json({ success: false, error: 'Phone verification is required' });
+        if (!idToken) {
+            return res.status(400).json({ success: false, error: 'Firebase ID token is required' });
         }
+
+        // Verify Firebase Token
+        const decodedToken = await admin.auth().verifyIdToken(idToken);
+        const { uid, phone_number } = decodedToken;
+
+        if (!phone_number) {
+            return res.status(400).json({ success: false, error: 'Phone number not found in Firebase token' });
+        }
+
+        // Normalize phone number (Firebase returns +91XXXXXXXXXX)
+        const phone = String(phone_number).replace(/\D/g, '').slice(-10);
 
         // Check for duplicates
         let existingUser = await Customer.findOne({ phone });
         if (!existingUser) existingUser = await Worker.findOne({ phone });
+        
         if (existingUser) {
-            return res.status(400).json({ success: false, error: 'Phone number already registered' });
+            // Update firebaseUid if it was missing and return error that user exists (or proceed? The prompt says: "If a user with the verified phone already exists: update firebaseUid, set isPhoneVerified to true, preserve all existing profile and role data"). But this is the register route. If they are already registered, they should just login.
+            if (!existingUser.firebaseUid || !existingUser.isPhoneVerified) {
+                existingUser.firebaseUid = uid;
+                existingUser.isPhoneVerified = true;
+                await existingUser.save();
+            }
+            return res.status(400).json({ success: false, error: 'Phone number already registered. Please login.' });
         }
 
         if (role === 'worker') {
             const worker = await Worker.create({
+                firebaseUid: uid,
                 name, phone, password, services, location, address, city, area, 
-                phoneVerified: true, isVerified: false, verificationStatus: 'Pending Verification', isBlocked: false,
+                phoneVerified: true, isPhoneVerified: true, isVerified: false, verificationStatus: 'Pending Verification', isBlocked: false,
                 expectedCharge, skills, experience, workingHoursStart, workingHoursEnd, emergencyAvailable, maxTravelDistance,
                 profilePhotoUrl, profilePhotoPublicId, idDocumentUrl, idDocumentPublicId,
                 addressProofUrl, addressProofPublicId, documentType
@@ -64,6 +83,10 @@ exports.login = async (req, res) => {
 
         if (!phone || !password || !role) {
             return res.status(400).json({ success: false, error: 'Please provide phone, password and role' });
+        }
+        
+        if (role !== 'admin') {
+            phone = String(phone).replace(/\D/g, '').slice(-10);
         }
 
         let user;
@@ -97,58 +120,52 @@ exports.getMe = async (req, res) => {
     res.status(200).json({ success: true, data: req.user });
 };
 
-// @desc    Send OTP for login/register
-// @route   POST /api/v1/auth/send-otp
+// @desc    Firebase Login
+// @route   POST /api/v1/auth/firebase-login
 // @access  Public
-exports.sendOtp = async (req, res) => {
+exports.firebaseLogin = async (req, res) => {
     try {
-        const { phone } = req.body;
-        if (!phone || phone.length !== 10) {
-            return res.status(400).json({ success: false, message: 'Please provide a valid 10-digit phone number' });
-        }
-        
-        const result = await otpService.sendOtp(phone);
-        res.status(200).json(result);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ success: false, message: 'Server error' });
-    }
-};
+        const { idToken } = req.body;
 
-// @desc    Verify OTP
-// @route   POST /api/v1/auth/verify-otp
-// @access  Public
-exports.verifyOtp = async (req, res) => {
-    try {
-        const { phone, otp, role, action } = req.body;
-        
-        const isValid = otpService.verifyOtp(phone, otp);
-        if (!isValid) {
-            return res.status(400).json({ success: false, message: 'Invalid or expired OTP' });
+        if (!idToken) {
+            return res.status(400).json({ success: false, error: 'Firebase ID token is required' });
         }
 
-        // If it's just a verification step for registration, return success
-        if (action === 'register') {
-            return res.status(200).json({ success: true, message: 'Phone verified successfully' });
+        // Verify Firebase Token
+        const decodedToken = await admin.auth().verifyIdToken(idToken);
+        const { uid, phone_number } = decodedToken;
+
+        if (!phone_number) {
+            return res.status(400).json({ success: false, error: 'Phone number not found in Firebase token' });
         }
 
-        // If it's a login action, find user and return token
-        let user;
-        if (role === 'customer') {
-            user = await Customer.findOne({ phone });
-        } else if (role === 'worker') {
-            user = await Worker.findOne({ phone });
-        } else if (role === 'admin') {
-            user = await Admin.findOne({ username: phone });
+        const phone = String(phone_number).replace(/\D/g, '').slice(-10);
+
+        let user = await Customer.findOne({ phone });
+        if (!user) user = await Worker.findOne({ phone });
+        if (!user) {
+             // Admin doesn't typically login with OTP, but just in case
+             user = await Admin.findOne({ username: phone });
         }
 
         if (!user) {
-            return res.status(404).json({ success: false, message: 'User not found. Please register first.' });
+            return res.status(404).json({ success: false, error: 'User not found. Please register first.' });
+        }
+
+        // Update firebaseUid and verification status if not set
+        if (!user.firebaseUid || !user.isPhoneVerified) {
+            user.firebaseUid = uid;
+            user.isPhoneVerified = true;
+            // Also update phoneVerified for backward compatibility
+            if (user.phoneVerified !== undefined) {
+                 user.phoneVerified = true;
+            }
+            await user.save();
         }
 
         sendTokenResponse(user, 200, res);
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ success: false, message: 'Server error' });
+        console.error("Firebase Login Error:", err);
+        res.status(401).json({ success: false, error: 'Invalid Firebase ID token' });
     }
 };

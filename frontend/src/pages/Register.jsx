@@ -5,6 +5,8 @@ import { getUserLocation } from '../utils/location';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
+import { auth } from '../config/firebase';
+import { RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
 
 const Register = () => {
   const navigate = useNavigate();
@@ -16,6 +18,23 @@ const Register = () => {
   const [otp, setOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
   const [phoneVerified, setPhoneVerified] = useState(false);
+  const [confirmationResult, setConfirmationResult] = useState(null);
+  const [idToken, setIdToken] = useState(null);
+
+  const initRecaptcha = () => {
+    if (!window.recaptchaVerifier) {
+      window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+        'size': 'invisible',
+        'callback': (response) => {
+          // reCAPTCHA solved
+        },
+        'expired-callback': () => {
+           window.recaptchaVerifier.clear();
+           window.recaptchaVerifier = null;
+        }
+      });
+    }
+  };
   
   const [formData, setFormData] = useState({
     name: '',
@@ -37,18 +56,24 @@ const Register = () => {
   };
 
   const handleSendOtp = async () => {
-    if (phone.length !== 10) {
+    const normalizedPhone = phone.replace(/\D/g, '').slice(-10);
+    if (normalizedPhone.length !== 10) {
       return toast.error('Please enter a valid 10-digit phone number');
     }
     try {
-      const res = await api.post('/auth/send-otp', { phone });
+      initRecaptcha();
+      const appVerifier = window.recaptchaVerifier;
+      const formattedPhone = '+91' + normalizedPhone;
+      const confirmation = await signInWithPhoneNumber(auth, formattedPhone, appVerifier);
+      setConfirmationResult(confirmation);
       setOtpSent(true);
       toast.success('OTP Sent Successfully');
-      if (res.data.demoOtp) {
-        toast('Development Mode: Use OTP ' + res.data.demoOtp, { icon: '🛠️' });
-      }
     } catch (err) {
-      if (!err.isWakingUp) toast.error(err.response?.data?.message || err.response?.data?.error || 'Failed to send OTP');
+      toast.error(err.message || 'Failed to send OTP');
+      if (window.recaptchaVerifier) {
+          window.recaptchaVerifier.clear();
+          window.recaptchaVerifier = null;
+      }
     }
   };
 
@@ -56,13 +81,22 @@ const Register = () => {
     if (otp.length !== 6) {
       return toast.error('Please enter a valid 6-digit OTP');
     }
+    if (!confirmationResult) return toast.error('Please request OTP first');
     try {
-      await api.post('/auth/verify-otp', { phone, otp, role: 'customer', action: 'register' });
+      const result = await confirmationResult.confirm(otp);
+      const token = await result.user.getIdToken();
+      setIdToken(token);
       setPhoneVerified(true);
       toast.success('Phone verified successfully');
       setStep(2);
     } catch (err) {
-      if (!err.isWakingUp) toast.error(err.response?.data?.message || err.response?.data?.error || 'Invalid OTP');
+      if (err.code === 'auth/invalid-verification-code') {
+          toast.error('Invalid OTP');
+      } else if (err.code === 'auth/code-expired') {
+          toast.error('OTP expired. Please request a new one.');
+      } else {
+          toast.error(err.message || 'Invalid OTP');
+      }
     }
   };
 
@@ -72,10 +106,10 @@ const Register = () => {
     if (!formData.city) return toast.error('Please select your city');
 
     try {
+      const normalizedPhone = phone.replace(/\D/g, '').slice(-10);
       const payload = {
         role: 'customer',
-        phone,
-        phoneVerified: true,
+        idToken,
         ...formData
       };
       const res = await api.post('/auth/register', payload);
@@ -206,6 +240,7 @@ const Register = () => {
         <div className="mt-6 text-center text-text-gray">
           Want to offer services? <Link to="/worker-register" className="text-primary font-bold hover:underline">Become a Worker</Link>
         </div>
+        <div id="recaptcha-container"></div>
       </div>
     </div>
   );

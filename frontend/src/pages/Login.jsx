@@ -4,6 +4,8 @@ import { Phone, Lock, User, ArrowRight, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 import api from '../utils/api';
+import { auth } from '../config/firebase';
+import { RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -16,21 +18,43 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [otp, setOtp] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [confirmationResult, setConfirmationResult] = useState(null);
+
+  const initRecaptcha = () => {
+    if (!window.recaptchaVerifier) {
+      window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+        'size': 'invisible',
+        'callback': (response) => {
+          // reCAPTCHA solved
+        },
+        'expired-callback': () => {
+           window.recaptchaVerifier.clear();
+           window.recaptchaVerifier = null;
+        }
+      });
+    }
+  };
 
   const handleSendOtp = async (e) => {
     e.preventDefault();
-    if (phone.length !== 10) return toast.error('Enter valid 10-digit phone number');
+    const normalizedPhone = phone.replace(/\D/g, '').slice(-10);
+    if (normalizedPhone.length !== 10) return toast.error('Enter valid 10-digit phone number');
     
     setIsLoading(true);
     try {
-      const res = await api.post('/auth/send-otp', { phone, role });
-      toast.success(res.data.message || 'OTP sent successfully');
-      if (res.data.demoOtp) {
-        toast('Development Mode: Use OTP ' + res.data.demoOtp, { icon: '🛠️' });
-      }
+      initRecaptcha();
+      const appVerifier = window.recaptchaVerifier;
+      const formattedPhone = '+91' + normalizedPhone;
+      const confirmation = await signInWithPhoneNumber(auth, formattedPhone, appVerifier);
+      setConfirmationResult(confirmation);
+      toast.success('OTP sent successfully');
       setStep(2);
     } catch (err) {
-      if (!err.isWakingUp) toast.error(err.response?.data?.message || err.response?.data?.error || 'Failed to send OTP');
+      toast.error(err.message || 'Failed to send OTP');
+      if (window.recaptchaVerifier) {
+          window.recaptchaVerifier.clear();
+          window.recaptchaVerifier = null;
+      }
     } finally {
       setIsLoading(false);
     }
@@ -39,16 +63,25 @@ const Login = () => {
   const handleVerifyOtp = async (e) => {
     e.preventDefault();
     if (otp.length !== 6) return toast.error('Enter 6 digit OTP');
+    if (!confirmationResult) return toast.error('Please request OTP first');
     
     setIsLoading(true);
     try {
-      // Pass action='login' (or omit, since backend defaults to login if not 'register')
-      const res = await api.post('/auth/verify-otp', { phone, otp, role, action: 'login' });
+      const result = await confirmationResult.confirm(otp);
+      const idToken = await result.user.getIdToken();
+      
+      const res = await api.post('/auth/firebase-login', { idToken, role });
       login(res.data.user, res.data.token);
       toast.success('Login successful!');
       navigate(res.data.user.role === 'worker' ? '/worker-dashboard' : (res.data.user.role === 'admin' ? '/admin' : '/customer-dashboard'));
     } catch (err) {
-      if (!err.isWakingUp) toast.error(err.response?.data?.message || err.response?.data?.error || 'Invalid OTP');
+      if (err.code === 'auth/invalid-verification-code') {
+          toast.error('Invalid OTP');
+      } else if (err.code === 'auth/code-expired') {
+          toast.error('OTP expired. Please request a new one.');
+      } else {
+          toast.error(err.response?.data?.error || err.message || 'Invalid OTP');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -57,8 +90,9 @@ const Login = () => {
   const handlePasswordLogin = async (e) => {
     e.preventDefault();
     setIsLoading(true);
+    const normalizedPhone = role === 'admin' ? phone : phone.replace(/\D/g, '').slice(-10);
     try {
-      const res = await api.post('/auth/login', { phone, password, role });
+      const res = await api.post('/auth/login', { phone: normalizedPhone, password, role });
       login(res.data.user, res.data.token);
       toast.success('Login successful!');
       navigate(res.data.user.role === 'worker' ? '/worker-dashboard' : (res.data.user.role === 'admin' ? '/admin' : '/customer-dashboard'));
@@ -138,6 +172,7 @@ const Login = () => {
             Register here
           </button>
         </div>
+        <div id="recaptcha-container"></div>
       </div>
     </div>
   );
