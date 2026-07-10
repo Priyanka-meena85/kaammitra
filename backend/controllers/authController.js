@@ -11,6 +11,28 @@ const sendTokenResponse = (user, statusCode, res) => {
     res.status(statusCode).json({ success: true, token, user });
 };
 
+const normalizeIndianPhone = (value = "") => {
+  const digits = String(value).replace(/\D/g, "");
+  if (digits.length === 10) return `+91${digits}`;
+  if (digits.length === 12 && digits.startsWith("91")) return `+${digits}`;
+  if (digits.length === 13 && digits.startsWith("091")) return `+91${digits.slice(3)}`;
+  return digits.startsWith("+") ? digits : `+${digits}`;
+};
+
+const getPhoneVariants = (phone = "") => {
+  const normalized = normalizeIndianPhone(phone);
+  const digits = normalized.replace(/\D/g, "");
+  const tenDigit = digits.slice(-10);
+
+  return [
+    normalized,
+    digits,
+    tenDigit,
+    `91${tenDigit}`,
+    `+91${tenDigit}`,
+  ].filter(Boolean);
+};
+
 // @desc    Register user (Customer or Worker)
 // @route   POST /api/v1/auth/register
 // @access  Public
@@ -155,13 +177,22 @@ exports.firebaseLogin = async (req, res) => {
             return res.status(503).json({ success: false, message: 'Firebase Admin is not configured on the server' });
         }
 
-        // Verify Firebase Token
         let decodedToken;
         try {
             decodedToken = await firebaseAuth.verifyIdToken(idToken);
         } catch (error) {
+            if (
+              error.code === "auth/id-token-expired" ||
+              error.code === "auth/argument-error" ||
+              error.code === "auth/invalid-id-token"
+            ) {
+              return res.status(401).json({
+                success: false,
+                message: "Invalid or expired Firebase token",
+              });
+            }
             console.error("Firebase login verification failed:", error.message);
-            return res.status(401).json({ success: false, error: 'Invalid Firebase ID token' });
+            return res.status(500).json({ success: false, message: 'Unable to complete Firebase login' });
         }
         
         const { uid, phone_number } = decodedToken;
@@ -170,41 +201,76 @@ exports.firebaseLogin = async (req, res) => {
             return res.status(400).json({ success: false, error: 'Phone number not found in Firebase token' });
         }
 
-        // Normalize phone number (E.164 format: +91XXXXXXXXXX)
-        const rawPhone = String(phone_number).replace(/\D/g, '');
-        const phone10 = rawPhone.slice(-10);
-        const phoneE164 = `+91${phone10}`;
-        const phoneLookup = [phone10, phoneE164, rawPhone];
+        const variants = getPhoneVariants(phone_number);
 
-        // Search by firebaseUid first, then normalized phone
-        let user = await Customer.findOne({ $or: [{ firebaseUid: uid }, { phone: { $in: phoneLookup } }] });
-        if (!user) {
-            user = await Worker.findOne({ $or: [{ firebaseUid: uid }, { phone: { $in: phoneLookup } }] });
-        }
-        if (!user) {
-             // Admin doesn't typically login with OTP, but just in case
-             user = await Admin.findOne({ username: { $in: phoneLookup } });
-        }
+        let account = null;
+        let accountType = null;
 
-        if (!user) {
-            return res.status(404).json({ success: false, error: 'User not found. Please register first.' });
+        if (Customer) {
+            account = await Customer.findOne({
+                $or: [
+                    { firebaseUid: uid },
+                    { phone: { $in: variants } }
+                ],
+            });
+            if (account) accountType = "customer";
         }
 
-        // Update firebaseUid and verification status if not set
-        if (!user.firebaseUid || !user.isPhoneVerified || user.phone !== phoneE164) {
-            user.firebaseUid = uid;
-            user.isPhoneVerified = true;
-            user.phone = phoneE164; // standardize
-            // Also update phoneVerified for backward compatibility
-            if (user.phoneVerified !== undefined) {
-                 user.phoneVerified = true;
+        if (!account && Worker) {
+            account = await Worker.findOne({
+                $or: [
+                    { firebaseUid: uid },
+                    { phone: { $in: variants } }
+                ],
+            });
+            if (account) accountType = "worker";
+        }
+        
+        if (!account && Admin) {
+            account = await Admin.findOne({
+                $or: [
+                    { username: { $in: variants } }
+                ]
+            });
+            if (account) accountType = "admin";
+        }
+
+        if (!account) {
+            return res.status(404).json({ success: false, message: 'Account not found. Please register first.' });
+        }
+
+        let changed = false;
+        if (!account.firebaseUid) {
+            account.firebaseUid = uid;
+            changed = true;
+        }
+        if (!account.isPhoneVerified) {
+            account.isPhoneVerified = true;
+            changed = true;
+        }
+        
+        if (changed) {
+            await account.save();
+        }
+
+        const token = jwt.sign({ id: account._id, role: account.role || accountType }, process.env.JWT_SECRET, {
+            expiresIn: '30d'
+        });
+
+        return res.status(200).json({
+            success: true,
+            message: "Login successful",
+            token,
+            user: {
+                _id: account._id,
+                name: account.name,
+                phone: account.phone || decodedToken.phone_number,
+                role: account.role || accountType,
+                isPhoneVerified: true,
             }
-            await user.save();
-        }
-
-        sendTokenResponse(user, 200, res);
+        });
     } catch (err) {
-        console.error("Firebase Login Error:", err);
-        res.status(500).json({ success: false, error: 'Server error during login' });
+        console.error("Firebase Login Error:", err.message);
+        res.status(500).json({ success: false, message: 'Server error during login' });
     }
 };
