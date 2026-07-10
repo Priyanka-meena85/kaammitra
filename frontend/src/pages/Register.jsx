@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { User, Phone, Mail, Lock, MapPin, Target, CheckCircle2, ChevronRight, ShieldCheck } from 'lucide-react';
 import { getUserLocation } from '../utils/location';
@@ -20,20 +20,43 @@ const Register = () => {
   const [phoneVerified, setPhoneVerified] = useState(false);
   const [confirmationResult, setConfirmationResult] = useState(null);
   const [idToken, setIdToken] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [resendCountdown, setResendCountdown] = useState(0);
 
-  const initRecaptcha = () => {
-    if (!window.recaptchaVerifier) {
-      window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-        'size': 'invisible',
-        'callback': (response) => {
-          // reCAPTCHA solved
-        },
-        'expired-callback': () => {
-           window.recaptchaVerifier.clear();
-           window.recaptchaVerifier = null;
-        }
-      });
+  useEffect(() => {
+    let timer;
+    if (resendCountdown > 0) {
+      timer = setTimeout(() => setResendCountdown(resendCountdown - 1), 1000);
     }
+    return () => clearTimeout(timer);
+  }, [resendCountdown]);
+
+  const setupRecaptcha = async () => {
+    if (window.recaptchaVerifier) {
+      try {
+        window.recaptchaVerifier.clear();
+      } catch (error) {
+        console.warn("Failed to clear old reCAPTCHA", error);
+      }
+      window.recaptchaVerifier = null;
+    }
+  
+    window.recaptchaVerifier = new RecaptchaVerifier(
+      auth,
+      "recaptcha-container",
+      {
+        size: "invisible",
+        callback: () => {
+          console.log("reCAPTCHA verified");
+        },
+        "expired-callback": () => {
+          console.warn("reCAPTCHA expired");
+        }
+      }
+    );
+  
+    await window.recaptchaVerifier.render();
+    return window.recaptchaVerifier;
   };
   
   const [formData, setFormData] = useState({
@@ -60,20 +83,24 @@ const Register = () => {
     if (normalizedPhone.length !== 10) {
       return toast.error('Please enter a valid 10-digit phone number');
     }
+    setIsLoading(true);
     try {
-      initRecaptcha();
-      const appVerifier = window.recaptchaVerifier;
+      const appVerifier = await setupRecaptcha();
       const formattedPhone = '+91' + normalizedPhone;
       const confirmation = await signInWithPhoneNumber(auth, formattedPhone, appVerifier);
       setConfirmationResult(confirmation);
       setOtpSent(true);
       toast.success('OTP Sent Successfully');
+      setResendCountdown(60);
     } catch (err) {
-      toast.error(err.message || 'Failed to send OTP');
+      console.error("Firebase OTP error:", err?.code, err?.message, err);
+      toast.error(`Error: ${err?.code || 'Failed to send OTP'} - ${err?.message}`);
       if (window.recaptchaVerifier) {
-          window.recaptchaVerifier.clear();
+          try { window.recaptchaVerifier.clear(); } catch(e) {}
           window.recaptchaVerifier = null;
       }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -82,6 +109,7 @@ const Register = () => {
       return toast.error('Please enter a valid 6-digit OTP');
     }
     if (!confirmationResult) return toast.error('Please request OTP first');
+    setIsLoading(true);
     try {
       const result = await confirmationResult.confirm(otp);
       const token = await result.user.getIdToken();
@@ -90,6 +118,7 @@ const Register = () => {
       toast.success('Phone verified successfully');
       setStep(2);
     } catch (err) {
+      console.error("Firebase Verification error:", err?.code, err?.message, err);
       if (err.code === 'auth/invalid-verification-code') {
           toast.error('Invalid OTP');
       } else if (err.code === 'auth/code-expired') {
@@ -97,6 +126,8 @@ const Register = () => {
       } else {
           toast.error(err.message || 'Invalid OTP');
       }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -105,6 +136,7 @@ const Register = () => {
     if (!phoneVerified) return toast.error('Please verify your phone number first');
     if (!formData.city) return toast.error('Please select your city');
 
+    setIsLoading(true);
     try {
       const normalizedPhone = phone.replace(/\D/g, '').slice(-10);
       const payload = {
@@ -117,7 +149,9 @@ const Register = () => {
       toast.success('Account created successfully');
       navigate('/customer-dashboard');
     } catch (err) {
-      if (!err.isWakingUp) toast.error(err.response?.data?.error || err.response?.data?.message || 'Registration failed');
+      toast.error(err.response?.data?.error || err.response?.data?.message || 'Registration failed');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -153,8 +187,8 @@ const Register = () => {
             </div>
 
             {!otpSent ? (
-              <button onClick={handleSendOtp} className="w-full bg-bg-soft-blue text-primary font-bold text-lg py-3 rounded-xl hover:bg-blue-100 transition-all">
-                Send OTP
+              <button disabled={isLoading} onClick={handleSendOtp} className="w-full bg-bg-soft-blue text-primary font-bold text-lg py-3 rounded-xl hover:bg-blue-100 transition-all disabled:opacity-50">
+                {isLoading ? 'Sending...' : 'Send OTP'}
               </button>
             ) : (
               <>
@@ -169,12 +203,16 @@ const Register = () => {
                     className="w-full pl-10 pr-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500 focus:outline-none text-center tracking-widest text-lg font-bold" 
                   />
                 </div>
-                <button onClick={handleVerifyOtp} className="w-full bg-primary text-white font-bold text-lg py-3 rounded-xl shadow-md hover:bg-primary-hover transition-all">
-                  Verify & Continue
+                <button disabled={isLoading} onClick={handleVerifyOtp} className="w-full bg-primary text-white font-bold text-lg py-3 rounded-xl shadow-md hover:bg-primary-hover transition-all disabled:opacity-50">
+                  {isLoading ? 'Verifying...' : 'Verify & Continue'}
                 </button>
                 <div className="text-center mt-2">
-                  <button onClick={handleSendOtp} className="text-text-gray text-sm font-medium hover:text-primary">
-                    Resend OTP
+                  <button 
+                    disabled={resendCountdown > 0 || isLoading} 
+                    onClick={handleSendOtp} 
+                    className={`text-sm font-medium ${resendCountdown > 0 || isLoading ? 'text-gray-400' : 'text-text-gray hover:text-primary'}`}
+                  >
+                    {resendCountdown > 0 ? `Resend OTP in ${resendCountdown}s` : 'Resend OTP'}
                   </button>
                 </div>
               </>
@@ -231,8 +269,8 @@ const Register = () => {
               <input type="password" required minLength="6" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} placeholder="Create Password (Min 6 chars)" className="w-full pl-10 pr-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500 focus:outline-none" />
             </div>
 
-            <button type="submit" disabled={!phoneVerified} className="w-full bg-orange-500 text-white font-bold text-lg py-4 rounded-xl shadow-lg hover:bg-orange-600 transition-all mt-4 disabled:opacity-50 disabled:cursor-not-allowed">
-              Complete Registration
+            <button disabled={isLoading || !phoneVerified} type="submit" className="w-full bg-orange-500 text-white font-bold text-lg py-4 rounded-xl shadow-lg hover:bg-orange-600 transition-all mt-4 disabled:opacity-50 disabled:cursor-not-allowed">
+              {isLoading ? 'Submitting...' : 'Complete Registration'}
             </button>
           </form>
         )}

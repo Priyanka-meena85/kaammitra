@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Phone, Lock, User, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Phone, Lock, User, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 import api from '../utils/api';
@@ -19,20 +19,42 @@ const Login = () => {
   const [otp, setOtp] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [confirmationResult, setConfirmationResult] = useState(null);
+  const [resendCountdown, setResendCountdown] = useState(0);
 
-  const initRecaptcha = () => {
-    if (!window.recaptchaVerifier) {
-      window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-        'size': 'invisible',
-        'callback': (response) => {
-          // reCAPTCHA solved
-        },
-        'expired-callback': () => {
-           window.recaptchaVerifier.clear();
-           window.recaptchaVerifier = null;
-        }
-      });
+  useEffect(() => {
+    let timer;
+    if (resendCountdown > 0) {
+      timer = setTimeout(() => setResendCountdown(resendCountdown - 1), 1000);
     }
+    return () => clearTimeout(timer);
+  }, [resendCountdown]);
+
+  const setupRecaptcha = async () => {
+    if (window.recaptchaVerifier) {
+      try {
+        window.recaptchaVerifier.clear();
+      } catch (error) {
+        console.warn("Failed to clear old reCAPTCHA", error);
+      }
+      window.recaptchaVerifier = null;
+    }
+  
+    window.recaptchaVerifier = new RecaptchaVerifier(
+      auth,
+      "recaptcha-container",
+      {
+        size: "invisible",
+        callback: () => {
+          console.log("reCAPTCHA verified");
+        },
+        "expired-callback": () => {
+          console.warn("reCAPTCHA expired");
+        }
+      }
+    );
+  
+    await window.recaptchaVerifier.render();
+    return window.recaptchaVerifier;
   };
 
   const handleSendOtp = async (e) => {
@@ -42,17 +64,18 @@ const Login = () => {
     
     setIsLoading(true);
     try {
-      initRecaptcha();
-      const appVerifier = window.recaptchaVerifier;
+      const appVerifier = await setupRecaptcha();
       const formattedPhone = '+91' + normalizedPhone;
       const confirmation = await signInWithPhoneNumber(auth, formattedPhone, appVerifier);
       setConfirmationResult(confirmation);
       toast.success('OTP sent successfully');
       setStep(2);
+      setResendCountdown(60);
     } catch (err) {
-      toast.error(err.message || 'Failed to send OTP');
+      console.error("Firebase OTP error:", err?.code, err?.message, err);
+      toast.error(`Error: ${err?.code || 'Failed to send OTP'} - ${err?.message}`);
       if (window.recaptchaVerifier) {
-          window.recaptchaVerifier.clear();
+          try { window.recaptchaVerifier.clear(); } catch(e) {}
           window.recaptchaVerifier = null;
       }
     } finally {
@@ -75,12 +98,15 @@ const Login = () => {
       toast.success('Login successful!');
       navigate(res.data.user.role === 'worker' ? '/worker-dashboard' : (res.data.user.role === 'admin' ? '/admin' : '/customer-dashboard'));
     } catch (err) {
+      console.error("Firebase Verification error:", err?.code, err?.message, err);
       if (err.code === 'auth/invalid-verification-code') {
           toast.error('Invalid OTP');
       } else if (err.code === 'auth/code-expired') {
           toast.error('OTP expired. Please request a new one.');
+      } else if (err.response?.data?.error) {
+          toast.error(err.response.data.error);
       } else {
-          toast.error(err.response?.data?.error || err.message || 'Invalid OTP');
+          toast.error(err.message || 'Verification failed');
       }
     } finally {
       setIsLoading(false);
@@ -140,7 +166,10 @@ const Login = () => {
             </form>
           ) : (
             <form onSubmit={handleVerifyOtp} className="space-y-5">
-              <div className="text-sm text-center mb-4 text-text-gray">OTP sent to {phone}. <button type="button" onClick={() => setStep(1)} className="text-primary font-bold">Edit</button></div>
+              <div className="text-sm text-center mb-4 text-text-gray">
+                OTP sent to {phone}.{' '}
+                <button type="button" onClick={() => setStep(1)} className="text-primary font-bold hover:underline">Edit</button>
+              </div>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-border-gray" size={20} />
                 <input type="text" required placeholder="Enter 6-digit OTP (123456)" value={otp} onChange={e => setOtp(e.target.value)} className="w-full pl-10 pr-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-primary text-center tracking-widest text-lg" maxLength={6} />
@@ -148,6 +177,16 @@ const Login = () => {
               <button disabled={isLoading} type="submit" className="w-full bg-primary text-white font-bold text-lg py-3 rounded-xl shadow-md hover:bg-primary-hover transition-all disabled:opacity-50">
                 {isLoading ? 'Verifying...' : 'Verify & Login'}
               </button>
+              <div className="text-center mt-2">
+                <button 
+                  type="button" 
+                  disabled={resendCountdown > 0 || isLoading} 
+                  onClick={handleSendOtp} 
+                  className={`text-sm font-medium ${resendCountdown > 0 || isLoading ? 'text-gray-400' : 'text-text-gray hover:text-primary'}`}
+                >
+                  {resendCountdown > 0 ? `Resend OTP in ${resendCountdown}s` : 'Resend OTP'}
+                </button>
+              </div>
             </form>
           )
         ) : (

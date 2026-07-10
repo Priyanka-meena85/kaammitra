@@ -1,8 +1,14 @@
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
+const API_URL = import.meta.env.VITE_API_URL?.replace(/\/+$/, "");
+
+if (!API_URL) {
+  throw new Error("VITE_API_URL is not configured");
+}
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL,
+  baseURL: API_URL,
   timeout: 15000, // 15 seconds timeout
   headers: {
     'Content-Type': 'application/json'
