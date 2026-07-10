@@ -53,7 +53,7 @@ const Emergency = () => {
   const findNearest = (type) => {
     if (!formData.service) return toast.error('Select a service first');
     
-    const WHATSAPP_SUPPORT_NUMBER = import.meta.env.VITE_WHATSAPP_SUPPORT_NUMBER || "918503996575";
+    const WHATSAPP_SUPPORT_NUMBER = import.meta.env.VITE_WHATSAPP_SUPPORT_NUMBER || "918503396575";
     const supportNumber = WHATSAPP_SUPPORT_NUMBER;
 
     if (type === 'call') {
