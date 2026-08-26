@@ -265,6 +265,35 @@ async function waitForServer(ms) {
   const emgStub = await req('POST', '/emergency', { body: {} });
   check('EMERGENCY STUB: dead placeholder route no longer answers', emgStub.status === 404, `status=${emgStub.status}`);
 
+  // ============ HARDENING ============
+  const health = await fetch(`http://127.0.0.1:${PORT}/health`);
+  check('HEADERS: helmet security headers present',
+    !!health.headers.get('x-content-type-options') && !!health.headers.get('x-frame-options'),
+    `x-content-type-options=${health.headers.get('x-content-type-options')} x-frame-options=${health.headers.get('x-frame-options')}`);
+
+  const missing = await req('GET', '/this-route-does-not-exist');
+  check('404: unmatched API route returns JSON, not an HTML error page',
+    missing.status === 404 && missing.body.success === false,
+    `status=${missing.status} body=${JSON.stringify(missing.body).slice(0, 140)}`);
+
+  const injected = await req('POST', '/auth/login', { body: { phone: { $ne: null }, password: { $ne: null }, role: 'customer' } });
+  check('SANITIZE: NoSQL operator payload cannot log anyone in',
+    injected.status >= 400 && !injected.body.token, `status=${injected.status} token=${!!injected.body.token}`);
+
+  const resetNoToken = await req('POST', '/auth/reset-password', { body: { role: 'customer', newPassword: 'brandnew123' } });
+  check('RESET: password reset requires a verified phone token',
+    resetNoToken.status === 400, `status=${resetNoToken.status} ${JSON.stringify(resetNoToken.body).slice(0, 140)}`);
+
+  // Brute force: the auth limiter allows 12 failures per window, then must block.
+  let sawLimit = false, attempts = 0;
+  for (let i = 0; i < 20; i++) {
+    attempts++;
+    const r = await req('POST', '/auth/login', { body: { phone: '9000000001', password: `wrong${i}`, role: 'customer' } });
+    if (r.status === 429) { sawLimit = true; break; }
+  }
+  check('RATE LIMIT: repeated failed logins are blocked with 429',
+    sawLimit, `no 429 after ${attempts} failed login attempts — OTP/password brute force is open`);
+
   console.log('\n================ QA RESULTS ================');
   console.log(results.join('\n'));
   console.log(`\nPassed: ${pass}   Failed: ${fail}`);

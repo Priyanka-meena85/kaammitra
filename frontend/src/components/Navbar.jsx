@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, User, Languages, LogOut } from 'lucide-react';
+import { Menu, X, User, Languages, LogOut , Wallet } from 'lucide-react';
 import SimpleModeToggle from './SimpleModeToggle';
 import { useAuth } from '../context/AuthContext';
 import NotificationBell from './NotificationBell';
@@ -46,6 +46,12 @@ const Navbar = () => {
                     <User size={18} />
                     {lang === 'hi' ? 'डैशबोर्ड' : 'Dashboard'}
                   </Link>
+                  {user.role === 'worker' && (
+                    <Link to="/wallet" className="text-text-gray hover:text-primary font-medium flex items-center gap-1">
+                      <Wallet size={18} />
+                      {lang === 'hi' ? 'कमाई' : 'Earnings'}
+                    </Link>
+                  )}
                   <button onClick={logout} className="text-text-gray hover:text-red-500 font-medium flex items-center gap-1">
                     <LogOut size={18} />
                   </button>
@@ -91,6 +97,12 @@ const Navbar = () => {
                   <NotificationBell />
                 </div>
                 <Link to={user.role === 'customer' ? '/customer-dashboard' : user.role === 'worker' ? '/worker-dashboard' : '/admin'} onClick={() => setIsOpen(false)} className="block px-3 py-2 text-text-gray font-medium hover:bg-bg-warm rounded-md">Dashboard</Link>
+                {user.role === 'customer' && (
+                  <Link to="/my-bookings" onClick={() => setIsOpen(false)} className="block px-3 py-2 text-text-gray font-medium hover:bg-bg-warm rounded-md">My Bookings</Link>
+                )}
+                {user.role === 'worker' && (
+                  <Link to="/wallet" onClick={() => setIsOpen(false)} className="block px-3 py-2 text-text-gray font-medium hover:bg-bg-warm rounded-md">Earnings &amp; Payouts</Link>
+                )}
                 <button onClick={() => { logout(); setIsOpen(false); }} className="block w-full text-left px-3 py-2 text-red-500 font-medium hover:bg-bg-warm rounded-md">Logout</button>
               </>
             ) : (

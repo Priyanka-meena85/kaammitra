@@ -17,12 +17,28 @@ connectDB();
 const http = require('http');
 const { Server } = require('socket.io');
 
+const helmet = require('helmet');
+const sanitize = require('./middlewares/sanitize');
+const { notFound, errorHandler } = require('./middlewares/errorHandler');
+const { apiLimiter, authLimiter, sensitiveLimiter, publicWriteLimiter } = require('./middlewares/rateLimit');
+
 const app = express();
 const server = http.createServer(app);
 
+// Render/Vercel terminate TLS upstream, so the client IP arrives in
+// X-Forwarded-For. Without this every request looks like the proxy to the rate
+// limiter and one visitor could exhaust everyone's quota.
+app.set('trust proxy', 1);
+
+// Security headers. crossOriginResourcePolicy is relaxed so uploaded images
+// still render on the frontend origin.
+app.use(helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' }
+}));
+
 // Enable CORS
-const allowedOrigins = process.env.NODE_ENV === 'production' 
-    ? [process.env.FRONTEND_URL] 
+const allowedOrigins = process.env.NODE_ENV === 'production'
+    ? [process.env.FRONTEND_URL]
     : [process.env.FRONTEND_URL || 'http://localhost:5173'];
 
 app.use(cors({
@@ -37,8 +53,12 @@ app.use(cors({
   credentials: true
 }));
 
-// Body parser
-app.use(express.json());
+// Body parser. The explicit cap stops a single huge payload from exhausting memory.
+app.use(express.json({ limit: '1mb' }));
+app.use(sanitize);
+
+// Broad ceiling across the API; tighter limits are applied per-route below.
+app.use('/api', apiLimiter);
 
 // Socket.io Setup
 const io = new Server(server, {
@@ -55,6 +75,22 @@ socketConfig(io);
 
 // Static folder for uploads
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Credential and account-creation endpoints get their own strict limiters.
+app.use('/api/v1/auth/login', authLimiter);
+app.use('/api/v1/auth/firebase-login', authLimiter);
+app.use('/api/v1/auth/register', sensitiveLimiter);
+app.use('/api/v1/auth/reset-password', sensitiveLimiter);
+
+// Endpoints a logged-out visitor can write to. Scoped to POST so a worker
+// refreshing their own leads list is never throttled.
+const postOnly = (limiter) => (req, res, next) =>
+    (req.method === 'POST' ? limiter(req, res, next) : next());
+
+app.use('/api/v1/leads', postOnly(publicWriteLimiter));
+app.use('/api/v1/callback-requests', postOnly(publicWriteLimiter));
+app.use('/api/v1/emergency-leads', postOnly(publicWriteLimiter));
+app.use('/api/v1/areas/launch', postOnly(publicWriteLimiter));
 
 // Mount routers
 app.use('/api/v1/auth', require('./routes/auth'));
@@ -86,15 +122,32 @@ app.get('/health', (req, res) => {
     res.status(200).json({ success: true, message: 'KaamMitra backend is running' });
 });
 
+// 404 and error handling must come after every route is mounted.
+app.use(notFound);
+app.use(errorHandler);
+
 const PORT = process.env.PORT || 5000;
 
 server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
 
-// Handle unhandled promise rejections
-process.on('unhandledRejection', (err, promise) => {
-    console.log(`Error: ${err.message}`);
-    // Close server & exit process
+// A rejected promise somewhere in a request must not take the whole site down
+// for every other user. Log it loudly and keep serving.
+process.on('unhandledRejection', (err) => {
+    console.error('Unhandled promise rejection:', err && err.stack ? err.stack : err);
+});
+
+// An uncaught exception leaves the process in an undefined state, so here we do
+// exit — but only after letting in-flight requests finish.
+process.on('uncaughtException', (err) => {
+    console.error('Uncaught exception:', err && err.stack ? err.stack : err);
     server.close(() => process.exit(1));
+    setTimeout(() => process.exit(1), 10000).unref();
+});
+
+// Render and other platforms send SIGTERM before replacing an instance.
+process.on('SIGTERM', () => {
+    console.log('SIGTERM received, shutting down gracefully.');
+    server.close(() => process.exit(0));
 });

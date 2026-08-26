@@ -203,6 +203,13 @@ const Login = () => {
             <button disabled={isLoading} type="submit" className="w-full bg-primary text-white font-bold text-lg py-3 rounded-xl shadow-md hover:bg-primary-hover transition-all disabled:opacity-50">
               {isLoading ? 'Loading...' : 'Login'}
             </button>
+            {role !== 'admin' && (
+              <div className="text-center">
+                <button type="button" onClick={() => navigate('/forgot-password')} className="text-sm text-text-gray hover:text-primary font-medium">
+                  Password bhool gaye?
+                </button>
+              </div>
+            )}
           </form>
         )}
 

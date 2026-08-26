@@ -355,6 +355,84 @@ exports.firebaseLogin = async (req, res) => {
     }
 };
 
+// @desc    Reset password after proving ownership of the phone number via OTP
+// @route   POST /api/v1/auth/reset-password
+// @access  Public (guarded by a verified Firebase ID token)
+exports.resetPassword = async (req, res) => {
+    try {
+        const { idToken, role, newPassword } = req.body;
+
+        if (!idToken) {
+            return res.status(400).json({ success: false, message: 'Phone verification is required.' });
+        }
+        if (!newPassword || String(newPassword).length < 6) {
+            return res.status(400).json({ success: false, message: 'New password must be at least 6 characters.' });
+        }
+        if (!['customer', 'worker'].includes(role)) {
+            return res.status(400).json({ success: false, message: 'Choose whether this is a customer or worker account.' });
+        }
+        if (!firebaseAuth) {
+            return res.status(503).json({ success: false, message: 'Firebase Admin is not configured on the server' });
+        }
+
+        let decodedToken;
+        try {
+            decodedToken = await firebaseAuth.verifyIdToken(idToken);
+        } catch (error) {
+            console.error('Reset password token verification failed:', error.message);
+            return res.status(401).json({ success: false, message: 'Phone verification expired. Please request a new OTP.' });
+        }
+
+        const { uid, phone_number } = decodedToken;
+        if (!phone_number) {
+            return res.status(400).json({ success: false, message: 'Phone number not found in verification token' });
+        }
+
+        // The OTP proves this person controls the number, so match on the number
+        // across every stored format rather than trusting anything in the body.
+        const variants = getPhoneVariants(phone_number);
+        const Model = role === 'worker' ? Worker : Customer;
+        const user = await Model.findOne({ $or: [{ firebaseUid: uid }, { phone: { $in: variants } }] });
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: `No ${role} account found for this number. Please register instead.`
+            });
+        }
+
+        if (user.isBlocked) {
+            return res.status(403).json({ success: false, message: 'This account is blocked. Please contact KaamMitra support.' });
+        }
+
+        // Assigning the plain value lets the schema's pre-save hook hash it.
+        user.password = newPassword;
+        user.firebaseUid = user.firebaseUid || uid;
+        user.isPhoneVerified = true;
+        await user.save();
+
+        await createAuditLog({
+            actorId: user._id,
+            actorRole: role,
+            actorName: user.name,
+            action: 'PASSWORD_RESET',
+            entityType: 'User',
+            entityId: user._id,
+            description: `${role} reset their password after OTP verification`,
+            ipAddress: req.ip,
+            userAgent: req.get('user-agent'),
+            severity: 'high'
+        });
+
+        // The number was just verified by OTP, which is stronger proof than the
+        // password being replaced — so sign them straight in.
+        sendTokenResponse(user, 200, res);
+    } catch (err) {
+        console.error('Reset password error:', err.message);
+        res.status(500).json({ success: false, message: 'Could not reset password. Please try again.' });
+    }
+};
+
 // @desc    Firebase Status
 // @route   GET /api/v1/auth/firebase-status
 // @access  Public

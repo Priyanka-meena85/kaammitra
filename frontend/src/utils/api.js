@@ -3,9 +3,22 @@ import toast from 'react-hot-toast';
 
 let API_URL = import.meta.env.VITE_API_URL?.replace(/\/+$/, "");
 
-// Force the correct Render URL with /api/v1 if the env var is missing, malformed, or just the base domain
-if (!API_URL || API_URL === "https://kaammitra-1.onrender.com" || API_URL.includes("ENABLE_DEMO")) {
-  API_URL = "https://kaammitra-1.onrender.com/api/v1";
+// A bare domain or a mangled .env value still needs the API path appended.
+if (API_URL && !API_URL.includes("/api/")) {
+  API_URL = `${API_URL.split("VITE_")[0].replace(/\/+$/, "")}/api/v1`;
+}
+
+// Never silently fall back to production: a developer running the app without a
+// .env would otherwise read and write live customer data. Default to localhost
+// in dev, and fail loudly in a production build that was shipped misconfigured.
+if (!API_URL) {
+  if (import.meta.env.DEV) {
+    API_URL = "http://localhost:5000/api/v1";
+    console.warn("VITE_API_URL is not set — falling back to http://localhost:5000/api/v1");
+  } else {
+    console.error("VITE_API_URL is not set. API requests will fail until it is configured.");
+    API_URL = "/api/v1";
+  }
 }
 
 const api = axios.create({
@@ -43,6 +56,11 @@ api.interceptors.response.use(
       localStorage.removeItem('token');
       // Dispatch event instead of hard redirect
       window.dispatchEvent(new Event('auth:unauthorized'));
+    } else if (error.response.status === 429) {
+      toast.error(
+        error.response.data?.message || 'Too many attempts. Please wait a little and try again.',
+        { id: 'rate-limit-toast' }
+      );
     } else if (error.response.status === 500) {
       toast.error('Server error. Please try again later.');
     }

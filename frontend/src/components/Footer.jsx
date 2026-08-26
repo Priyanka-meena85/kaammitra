@@ -29,7 +29,8 @@ const Footer = () => {
           <ul className="space-y-2 text-border-gray">
             <li><Link to="/how-it-works" className="hover:text-blue-400">How it Works</Link></li>
             <li><Link to="/worker-onboarding" className="hover:text-blue-400">Become a Worker</Link></li>
-            <li><Link to="/contact" className="hover:text-blue-400">Contact Us</Link></li>
+            <li><Link to="/pricing" className="hover:text-blue-400">Pricing</Link></li>
+            <li><Link to="/callback-request" className="hover:text-blue-400">Contact Us</Link></li>
           </ul>
         </div>
 
@@ -41,8 +42,13 @@ const Footer = () => {
           </Link>
         </div>
       </div>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12 pt-8 border-t border-gray-800 text-center text-text-gray">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12 pt-8 border-t border-gray-800 flex flex-col md:flex-row md:items-center md:justify-between gap-4 text-text-gray">
         <p>&copy; {new Date().getFullYear()} KaamMitra. All rights reserved.</p>
+        <nav className="flex flex-wrap gap-x-6 gap-y-2 text-sm" aria-label="Legal">
+          <Link to="/terms" className="hover:text-blue-400">Terms of Service</Link>
+          <Link to="/privacy" className="hover:text-blue-400">Privacy Policy</Link>
+          <Link to="/refund-policy" className="hover:text-blue-400">Cancellation &amp; Refunds</Link>
+        </nav>
       </div>
     </footer>
   );

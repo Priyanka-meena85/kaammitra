@@ -1,5 +1,5 @@
 const express = require('express');
-const { register, login, getMe, firebaseLogin, firebaseStatus } = require('../controllers/authController');
+const { register, login, getMe, firebaseLogin, firebaseStatus, resetPassword } = require('../controllers/authController');
 const { protect } = require('../middlewares/auth');
 
 const router = express.Router();
@@ -9,6 +9,7 @@ const { firebaseAuth, firebaseInitializationError } = require('../config/firebas
 router.post('/register', register);
 router.post('/login', login); // Keep it if email/pass exists, or old login
 router.post('/firebase-login', firebaseLogin);
+router.post('/reset-password', resetPassword);
 router.get('/me', protect, getMe);
 
 router.get('/firebase-status', firebaseStatus);
