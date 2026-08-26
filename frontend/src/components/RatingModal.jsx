@@ -47,7 +47,7 @@ const RatingModal = ({ isOpen, onClose, onSubmit, workerName }) => {
 
           <div className="mb-6">
             <label className="block text-sm font-medium text-navy mb-2">Write a Review (Optional)</label>
-            <textarea
+            <textarea aria-label="Write a Review (Optional)"
               value={review}
               onChange={(e) => setReview(e.target.value)}
               placeholder="Describe your experience..."

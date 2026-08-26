@@ -4,7 +4,7 @@ const { protect, authorize } = require('../middlewares/auth');
 
 const router = express.Router();
 
-router.post('/', createComplaint); 
+router.post('/', protect, authorize('customer'), createComplaint);
 router.get('/', protect, authorize('admin'), getComplaints);
 router.get('/my', protect, getMyComplaints);
 

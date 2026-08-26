@@ -75,9 +75,13 @@ exports.sendMessage = async (req, res) => {
         }
         const [cId, wId] = parts;
 
-        // Verify authorization
-        if ((req.user.role === 'customer' && String(req.user.id) !== cId) ||
-            (req.user.role === 'worker' && String(req.user.id) !== wId)) {
+        // Only the two participants may post. The previous check listed roles
+        // individually, so an admin matched neither branch and could speak as
+        // either side of someone else's conversation.
+        const isParticipant =
+            (req.user.role === 'customer' && String(req.user.id) === cId) ||
+            (req.user.role === 'worker' && String(req.user.id) === wId);
+        if (!isParticipant) {
             return res.status(403).json({ success: false, message: 'Not authorized to send message' });
         }
 

@@ -94,7 +94,7 @@ const WorkerWallet = () => {
           <form onSubmit={handlePayoutRequest} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-text-gray mb-1">Amount (₹)</label>
-              <input 
+              <input aria-label="Amount (₹)" 
                 type="number" 
                 value={payoutAmount}
                 onChange={e => setPayoutAmount(e.target.value)}
@@ -108,7 +108,7 @@ const WorkerWallet = () => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-text-gray mb-1">Account Holder</label>
-                <input 
+                <input aria-label="Account Holder" 
                   type="text" 
                   value={bankDetails.accountHolderName}
                   onChange={e => setBankDetails({...bankDetails, accountHolderName: e.target.value})}
@@ -117,7 +117,7 @@ const WorkerWallet = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-text-gray mb-1">UPI ID</label>
-                <input 
+                <input aria-label="UPI ID" 
                   type="text" 
                   value={bankDetails.upiId}
                   onChange={e => setBankDetails({...bankDetails, upiId: e.target.value})}
@@ -127,7 +127,7 @@ const WorkerWallet = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-text-gray mb-1">Account Number</label>
-                <input 
+                <input aria-label="Account Number" 
                   type="text" 
                   value={bankDetails.accountNumber}
                   onChange={e => setBankDetails({...bankDetails, accountNumber: e.target.value})}
@@ -136,7 +136,7 @@ const WorkerWallet = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-text-gray mb-1">IFSC Code</label>
-                <input 
+                <input aria-label="IFSC Code" 
                   type="text" 
                   value={bankDetails.ifsc}
                   onChange={e => setBankDetails({...bankDetails, ifsc: e.target.value})}

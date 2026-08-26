@@ -64,25 +64,25 @@ const AreaLaunch = () => {
              <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="relative">
                     <User className="absolute left-3 top-1/2 -translate-y-1/2 text-border-gray" size={18} />
-                    <input type="text" required placeholder="Name" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full pl-10 pr-4 py-2 rounded-lg border border-border-gray focus:ring-2 focus:ring-blue-500" />
+                    <input aria-label="Name" type="text" required placeholder="Name" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full pl-10 pr-4 py-2 rounded-lg border border-border-gray focus:ring-2 focus:ring-blue-500" />
                 </div>
                 <div className="relative">
                     <PhoneCall className="absolute left-3 top-1/2 -translate-y-1/2 text-border-gray" size={18} />
-                    <input type="tel" required placeholder="Phone" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full pl-10 pr-4 py-2 rounded-lg border border-border-gray focus:ring-2 focus:ring-blue-500" />
+                    <input aria-label="Phone" type="tel" required placeholder="Phone" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full pl-10 pr-4 py-2 rounded-lg border border-border-gray focus:ring-2 focus:ring-blue-500" />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                     <div className="relative">
                         <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-border-gray" size={18} />
-                        <input type="text" required placeholder="City" value={formData.city} onChange={e => setFormData({...formData, city: e.target.value})} className="w-full pl-10 pr-4 py-2 rounded-lg border border-border-gray focus:ring-2 focus:ring-blue-500" />
+                        <input aria-label="City" type="text" required placeholder="City" value={formData.city} onChange={e => setFormData({...formData, city: e.target.value})} className="w-full pl-10 pr-4 py-2 rounded-lg border border-border-gray focus:ring-2 focus:ring-blue-500" />
                     </div>
                     <div className="relative">
                         <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-border-gray" size={18} />
-                        <input type="text" required placeholder="Area" value={formData.area} onChange={e => setFormData({...formData, area: e.target.value})} className="w-full pl-10 pr-4 py-2 rounded-lg border border-border-gray focus:ring-2 focus:ring-blue-500" />
+                        <input aria-label="Area" type="text" required placeholder="Area" value={formData.area} onChange={e => setFormData({...formData, area: e.target.value})} className="w-full pl-10 pr-4 py-2 rounded-lg border border-border-gray focus:ring-2 focus:ring-blue-500" />
                     </div>
                 </div>
                 <div className="relative">
                     <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 text-border-gray" size={18} />
-                    <input type="text" required placeholder="Which service do you need?" value={formData.service} onChange={e => setFormData({...formData, service: e.target.value})} className="w-full pl-10 pr-4 py-2 rounded-lg border border-border-gray focus:ring-2 focus:ring-blue-500" />
+                    <input aria-label="Which service do you need?" type="text" required placeholder="Which service do you need?" value={formData.service} onChange={e => setFormData({...formData, service: e.target.value})} className="w-full pl-10 pr-4 py-2 rounded-lg border border-border-gray focus:ring-2 focus:ring-blue-500" />
                 </div>
                 <button disabled={isSubmitting} type="submit" className="w-full bg-primary text-white font-bold py-3 rounded-xl shadow-lg hover:bg-primary-hover transition-all disabled:opacity-50">
                     {isSubmitting ? 'Submitting...' : 'Request Launch'}

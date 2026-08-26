@@ -174,7 +174,7 @@ const Workers = () => {
                     <label className="block text-sm font-medium text-text-gray mb-2">Search Service</label>
                     <div className="relative">
                       <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-border-gray" />
-                      <input 
+                      <input aria-label="Search Service" 
                         type="text" 
                         value={searchTerm}
                         onChange={(e) => {
@@ -188,7 +188,7 @@ const Workers = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-text-gray mb-2">Area / City</label>
-                    <select 
+                    <select aria-label="Area / City" 
                       value={selectedArea} 
                       onChange={(e) => setSelectedArea(e.target.value)}
                       className="w-full p-2 rounded-lg border border-border-gray focus:ring-2 focus:ring-primary focus:outline-none"
@@ -205,7 +205,7 @@ const Workers = () => {
               {/* Service Category */}
               <div>
                 <label className="block text-sm font-medium text-text-gray mb-2">Category</label>
-                <select 
+                <select aria-label="Category" 
                   value={selectedService} 
                   onChange={(e) => {
                     setSelectedService(e.target.value);
@@ -224,7 +224,7 @@ const Workers = () => {
               {!isSimpleMode && (
                 <div>
                   <label className="block text-sm font-medium text-text-gray mb-2">Distance Zone</label>
-                  <select 
+                  <select aria-label="Distance Zone" 
                     value={distanceFilter} 
                     onChange={(e) => setDistanceFilter(e.target.value)}
                     className="w-full p-2 rounded-lg border border-border-gray focus:ring-2 focus:ring-primary focus:outline-none"
@@ -240,7 +240,7 @@ const Workers = () => {
               {!isSimpleMode && (
                 <div>
                   <label className="block text-sm font-medium text-text-gray mb-2">Sort By</label>
-                  <select 
+                  <select aria-label="Sort By" 
                     value={sortBy} 
                     onChange={(e) => setSortBy(e.target.value)}
                     className="w-full p-2 rounded-lg border border-border-gray focus:ring-2 focus:ring-primary focus:outline-none"

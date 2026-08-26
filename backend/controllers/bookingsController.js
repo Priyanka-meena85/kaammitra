@@ -1,23 +1,83 @@
+const mongoose = require('mongoose');
 const Booking = require('../models/Booking');
 const MatchEvent = require('../models/MatchEvent');
+const Service = require('../models/Service');
+const Worker = require('../models/Worker');
 const { createAuditLog } = require('../services/auditService');
+const { exactMatch } = require('../utils/escapeRegex');
+
+const PUBLIC_WORKER_FIELDS = [
+    'name', 'phone', 'whatsapp', 'services', 'skills', 'experience', 'expectedCharge',
+    'city', 'area', 'radius', 'location', 'isAvailable', 'workingHoursStart',
+    'workingHoursEnd', 'emergencyAvailable', 'preferredAreas', 'maxTravelDistance',
+    'weeklyOffDay', 'verificationStatus', 'profilePhotoUrl', 'phoneVerified',
+    'isVerified', 'trustScore', 'averageRating', 'totalReviews', 'ratingBreakdown',
+    'badges', 'totalRatings', 'completedJobs', 'responseTime', 'profileCompletion',
+    'role'
+].join(' ');
+
+// A worker's `services` array holds plain names ("Plumber"), not Service ids, so the
+// booking form legitimately sends a name. Accept either and resolve to a real id.
+const resolveServiceId = async (raw, fallbackName) => {
+    if (mongoose.Types.ObjectId.isValid(raw)) return raw;
+
+    const name = String(raw || fallbackName || '').trim();
+    if (!name) return null;
+
+    const service = await Service.findOne({
+        $or: [{ name: exactMatch(name) }, { englishName: exactMatch(name) }]
+    }).select('_id');
+
+    return service ? service._id : null;
+};
 
 exports.createBooking = async (req, res) => {
     try {
-        req.body.customerId = req.user.id;
-        
+        const { workerId, date, time } = req.body;
+
+        if (!workerId) {
+            return res.status(400).json({ success: false, message: 'Please choose a worker for this booking.' });
+        }
+
+        const worker = await Worker.findById(workerId).select('expectedCharge services isBlocked');
+        if (!worker) {
+            return res.status(404).json({ success: false, message: 'Worker not found.' });
+        }
+        if (worker.isBlocked) {
+            return res.status(400).json({ success: false, message: 'This worker is no longer accepting bookings.' });
+        }
+
+        if (date) {
+            const startOfToday = new Date();
+            startOfToday.setHours(0, 0, 0, 0);
+            if (Number.isNaN(new Date(date).getTime())) {
+                return res.status(400).json({ success: false, message: 'Please choose a valid date.' });
+            }
+            if (new Date(date) < startOfToday) {
+                return res.status(400).json({ success: false, message: 'Please choose today or a future date.' });
+            }
+        }
+
+        const serviceId = await resolveServiceId(req.body.serviceId, req.body.service || worker.services?.[0]);
+        if (!serviceId) {
+            return res.status(400).json({
+                success: false,
+                message: 'We could not match that service. Please pick a service from the list and try again.'
+            });
+        }
+
         // Check for double booking if workerId and time are provided
-        if (req.body.workerId && req.body.date && req.body.time) {
-            const dateObj = new Date(req.body.date);
+        if (workerId && date && time) {
+            const dateObj = new Date(date);
             // Ignore time portion for date matching if necessary, or just match exactly.
             // Since frontend sends date as YYYY-MM-DD, we can match the date at start of day
             const startOfDay = new Date(dateObj.setHours(0, 0, 0, 0));
             const endOfDay = new Date(dateObj.setHours(23, 59, 59, 999));
-            
+
             const existingBooking = await Booking.findOne({
-                workerId: req.body.workerId,
+                workerId,
                 date: { $gte: startOfDay, $lte: endOfDay },
-                time: req.body.time,
+                time,
                 status: { $in: ['Pending', 'Accepted', 'On the Way', 'In Progress'] }
             });
 
@@ -29,7 +89,21 @@ exports.createBooking = async (req, res) => {
             }
         }
 
-        const booking = await Booking.create(req.body);
+        // Only these fields may come from the client. status, paymentStatus, advanceAmount
+        // and the commission columns are server-owned; totalAmount is taken from the
+        // worker's own rate so a customer cannot quote themselves a cheaper job.
+        const booking = await Booking.create({
+            customerId: req.user.id,
+            workerId,
+            serviceId,
+            description: req.body.description,
+            address: req.body.address,
+            urgency: req.body.urgency,
+            date,
+            time,
+            paymentMode: req.body.paymentMode,
+            totalAmount: worker.expectedCharge || 500
+        });
 
         // Emit live update via Socket.io and Notification
         const socketConfig = require('../socket');
@@ -119,8 +193,13 @@ exports.updateBookingStatus = async (req, res) => {
             return res.status(404).json({ success: false, message: 'Booking not found' });
         }
         
-        if (req.user.role === 'customer' && status !== 'Cancelled') {
-            return res.status(403).json({ success: false, message: 'Not authorized to update status' });
+        if (req.user.role === 'customer') {
+            if (String(booking.customerId) !== String(req.user.id)) {
+                return res.status(403).json({ success: false, message: 'You can only update your own bookings' });
+            }
+            if (status !== 'Cancelled') {
+                return res.status(403).json({ success: false, message: 'Not authorized to update status' });
+            }
         }
 
         if (req.user.role === 'worker' && String(booking.workerId) !== String(req.user.id)) {
@@ -274,15 +353,15 @@ exports.suggestWorkers = async (req, res) => {
         let query = { isBlocked: false, isAvailable: true };
         if (service) {
             query.$or = [
-                { services: { $in: [new RegExp(`^${service}$`, 'i')] } },
-                { skills: { $in: [new RegExp(`^${service}$`, 'i')] } }
+                { services: { $in: [exactMatch(service)] } },
+                { skills: { $in: [exactMatch(service)] } }
             ];
         }
-        if (city && city !== 'All Cities') query.city = new RegExp(`^${city}$`, 'i');
-        if (area) query.area = new RegExp(`^${area}$`, 'i');
+        if (city && city !== 'All Cities') query.city = exactMatch(city);
+        if (area) query.area = exactMatch(area);
         if (urgency === 'emergency') query.emergencyAvailable = true;
 
-        const workers = await require('../models/Worker').find(query);
+        const workers = await Worker.find(query).select(PUBLIC_WORKER_FIELDS);
         const searchParams = { service, city, area, preferredTime, urgency, maxBudget };
         const { calculateWorkerScore } = require('../utils/workerRanking');
         

@@ -46,31 +46,31 @@ const CallbackRequest = () => {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="relative">
             <User className="absolute left-3 top-1/2 -translate-y-1/2 text-border-gray" size={20} />
-            <input type="text" required placeholder="Your Name" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full pl-10 pr-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500" />
+            <input aria-label="Your Name" type="text" required placeholder="Your Name" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full pl-10 pr-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500" />
           </div>
           <div className="relative">
             <PhoneCall className="absolute left-3 top-1/2 -translate-y-1/2 text-border-gray" size={20} />
-            <input type="tel" required placeholder="Phone Number" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full pl-10 pr-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500" />
+            <input aria-label="Phone Number" type="tel" required placeholder="Phone Number" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full pl-10 pr-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500" />
           </div>
           <div className="relative">
             <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 text-border-gray" size={20} />
-            <input type="text" required placeholder="Service Needed (e.g. Plumber)" value={formData.service} onChange={e => setFormData({...formData, service: e.target.value})} className="w-full pl-10 pr-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500" />
+            <input aria-label="Service Needed (e.g. Plumber)" type="text" required placeholder="Service Needed (e.g. Plumber)" value={formData.service} onChange={e => setFormData({...formData, service: e.target.value})} className="w-full pl-10 pr-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500" />
           </div>
           <div className="grid grid-cols-2 gap-4">
              <div className="relative">
                 <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-border-gray" size={20} />
-                <input type="text" placeholder="City" value={formData.city} onChange={e => setFormData({...formData, city: e.target.value})} className="w-full pl-10 pr-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500" />
+                <input aria-label="City" type="text" placeholder="City" value={formData.city} onChange={e => setFormData({...formData, city: e.target.value})} className="w-full pl-10 pr-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500" />
              </div>
              <div className="relative">
                 <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-border-gray" size={20} />
-                <input type="text" placeholder="Area" value={formData.area} onChange={e => setFormData({...formData, area: e.target.value})} className="w-full pl-10 pr-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500" />
+                <input aria-label="Area" type="text" placeholder="Area" value={formData.area} onChange={e => setFormData({...formData, area: e.target.value})} className="w-full pl-10 pr-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500" />
              </div>
           </div>
           <div className="relative">
             <Clock className="absolute left-3 top-1/2 -translate-y-1/2 text-border-gray" size={20} />
-            <input type="text" placeholder="Preferred call time (e.g. Morning 10AM)" value={formData.preferredCallTime} onChange={e => setFormData({...formData, preferredCallTime: e.target.value})} className="w-full pl-10 pr-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500" />
+            <input aria-label="Preferred call time (e.g. Morning 10AM)" type="text" placeholder="Preferred call time (e.g. Morning 10AM)" value={formData.preferredCallTime} onChange={e => setFormData({...formData, preferredCallTime: e.target.value})} className="w-full pl-10 pr-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500" />
           </div>
-          <textarea placeholder="Any specific note? (Optional)" value={formData.note} onChange={e => setFormData({...formData, note: e.target.value})} className="w-full p-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500" rows="3"></textarea>
+          <textarea aria-label="Any specific note? (Optional)" placeholder="Any specific note? (Optional)" value={formData.note} onChange={e => setFormData({...formData, note: e.target.value})} className="w-full p-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500" rows="3"></textarea>
 
           <button disabled={isSubmitting} type="submit" className="w-full bg-primary text-white font-bold text-lg py-3 rounded-xl shadow-lg hover:bg-primary-hover transition-all disabled:opacity-50 mt-4">
             {isSubmitting ? 'Sending...' : 'Request Callback'}

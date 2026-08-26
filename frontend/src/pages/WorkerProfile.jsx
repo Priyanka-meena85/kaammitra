@@ -140,18 +140,18 @@ const WorkerProfile = () => {
         return;
     }
     try {
-        await api.post('/ratings', {
+        // customerId comes from the auth token server-side; `comment` is the schema field.
+        const res = await api.post('/ratings', {
             workerId: id,
-            customerId: user._id,
             rating: ratingData.rating,
-            review: ratingData.review
+            comment: ratingData.review
         });
         toast.success('Thank you for rating!');
         setIsRatingModalOpen(false);
-        // Refresh ratings locally
-        setRatings([...ratings, { ...ratingData, customerId: user, createdAt: new Date() }]);
+        setRatings([...ratings, { ...res.data.data, customerId: user }]);
     } catch (err) {
-        toast.error('Failed to submit rating');
+        // The server explains *why* (no completed job, already rated) — show that.
+        toast.error(err?.response?.data?.message || 'Failed to submit rating');
     }
   };
 

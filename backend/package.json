@@ -7,7 +7,9 @@
     "start": "node server.js",
     "server": "nodemon server.js",
     "dev": "nodemon server.js",
-    "seed:workers": "node seed/seedWorkers.js"
+    "seed:workers": "node seed/seedWorkers.js",
+    "test:security": "node tests/security-regression.js",
+    "test:journey": "node tests/customer-journey.js"
   },
   "keywords": [],
   "author": "",
@@ -31,5 +33,8 @@
     "redis": "^6.1.0",
     "socket.io": "^4.8.3",
     "web-push": "^3.6.7"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
   }
 }

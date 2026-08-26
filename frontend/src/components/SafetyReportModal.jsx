@@ -44,7 +44,7 @@ const SafetyReportModal = ({ isOpen, onClose, targetId, targetRole, bookingId })
                 <form onSubmit={handleSubmit} className="p-6 space-y-4">
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Issue Type</label>
-                        <select 
+                        <select aria-label="Issue Type" 
                             value={type} 
                             onChange={(e) => setType(e.target.value)}
                             className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-red-500 outline-none bg-gray-50"
@@ -61,7 +61,7 @@ const SafetyReportModal = ({ isOpen, onClose, targetId, targetRole, bookingId })
 
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Severity</label>
-                        <select 
+                        <select aria-label="Severity" 
                             value={severity} 
                             onChange={(e) => setSeverity(e.target.value)}
                             className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-red-500 outline-none bg-gray-50"
@@ -75,7 +75,7 @@ const SafetyReportModal = ({ isOpen, onClose, targetId, targetRole, bookingId })
 
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                        <textarea
+                        <textarea aria-label="Description"
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
                             rows="4"

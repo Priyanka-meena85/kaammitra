@@ -51,47 +51,47 @@ const Services = () => {
       </Helmet>
       
       {/* 1. Hero Section */}
-      <section className="bg-gradient-to-br from-blue-900 to-blue-700 text-white py-16 md:py-24 px-4 relative overflow-hidden">
+      <section className="market-hero relative overflow-hidden py-14 md:py-20 px-4">
         {/* Background Patterns */}
-        <div className="absolute top-0 right-0 -mt-20 -mr-20 w-80 h-80 bg-card-white opacity-5 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-0 left-0 -mb-20 -ml-20 w-64 h-64 bg-blue-400 opacity-10 rounded-full blur-2xl"></div>
+        <div className="market-hero-grid absolute inset-0 pointer-events-none"></div>
 
-        <div className="max-w-4xl mx-auto text-center relative z-10">
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold mb-6 leading-tight">
-            Choose a service and get <span className="text-blue-300">trusted help</span> near you
+        <div className="max-w-5xl mx-auto relative z-10">
+          <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-accent-orange mb-4">Local help, made easy</p>
+          <h1 className="text-4xl md:text-6xl font-extrabold text-navy mb-5 leading-[1.05] max-w-3xl">
+            Find the right person for the job.
           </h1>
-          <p className="text-lg md:text-xl text-blue-100 mb-10 max-w-2xl mx-auto font-medium">
-            Book verified electricians, plumbers, cleaners, carpenters and local workers by voice, call, WhatsApp or simple booking.
+          <p className="text-lg text-text-gray mb-8 max-w-2xl font-medium leading-relaxed">
+            Browse nearby professionals by service, compare what matters, and connect directly when you are ready.
           </p>
 
           {/* Search Bar Container */}
-          <div className="bg-card-white p-2 rounded-2xl shadow-2xl flex flex-col md:flex-row gap-2 max-w-3xl mx-auto mb-8">
+          <div className="bg-white p-2 rounded-2xl shadow-xl border border-border-gray flex flex-col md:flex-row gap-2 max-w-3xl mb-7">
             <div className="relative flex-grow flex items-center">
-              <Search className="absolute left-4 text-border-gray" size={24} />
-              <input 
+              <Search className="absolute left-4 text-primary" size={24} />
+              <input aria-label="Search service like electrician, plumber, cleaner..." 
                 type="text" 
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search service like electrician, plumber, cleaner..." 
-                className="w-full pl-12 pr-4 py-4 rounded-xl text-navy text-lg outline-none focus:ring-2 focus:ring-blue-100 transition-all"
+                className="w-full pl-12 pr-4 py-4 rounded-xl text-navy text-lg outline-none bg-bg-warm focus:ring-2 focus:ring-primary/20 transition-all"
               />
             </div>
-            <button className="bg-primary hover:bg-primary-hover text-white font-bold text-lg px-8 py-4 rounded-xl shadow-md transition-colors md:w-auto w-full">
-              Search
+            <button onClick={() => navigate(`/workers?smart=true${searchTerm ? `&service=${encodeURIComponent(searchTerm)}` : ''}`)} className="bg-primary hover:bg-primary-hover text-white font-bold text-lg px-8 py-4 rounded-xl shadow-md transition-colors md:w-auto w-full">
+              Find workers <span aria-hidden="true">→</span>
             </button>
           </div>
 
           {/* Action Buttons */}
-          <div className="flex flex-wrap justify-center gap-4">
+          <div className="flex flex-wrap gap-3">
             <button 
               onClick={handleLocation}
-              className="flex items-center gap-2 bg-card-white/10 hover:bg-card-white/20 border border-white/20 px-6 py-3 rounded-full font-semibold backdrop-blur-sm transition-all"
+              className="flex items-center gap-2 bg-white hover:bg-bg-warm border border-border-gray px-5 py-3 rounded-xl font-semibold text-navy transition-all"
             >
-              <MapPin size={20} className="text-blue-200" /> Use My Location
+              <MapPin size={20} className="text-primary" /> Use My Location
             </button>
             <button 
               onClick={() => navigate('/emergency')}
-              className="flex items-center gap-2 bg-accent-orange hover:bg-accent-orange text-white px-6 py-3 rounded-full font-bold shadow-lg shadow-red-500/30 transition-all"
+              className="flex items-center gap-2 bg-accent-orange hover:bg-accent-orange-hover text-white px-5 py-3 rounded-xl font-bold shadow-lg transition-all"
             >
               <AlertTriangle size={20} /> Emergency Help
             </button>

@@ -133,16 +133,35 @@ module.exports = (io) => {
         });
 
         // Geolocation Tracking
-        socket.on('subscribe_location', ({ bookingId }) => {
-            socket.join(`location_${bookingId}`);
+        socket.on('subscribe_location', async ({ bookingId }) => {
+            try {
+                const booking = await Booking.findById(bookingId).select('customerId workerId');
+                if (!booking) return;
+
+                const isParticipant = [booking.customerId, booking.workerId]
+                    .filter(Boolean)
+                    .some((participantId) => participantId.toString() === String(userId));
+                if (isParticipant) socket.join(`location_${bookingId}`);
+            } catch (err) {
+                console.error('Location subscription error:', err.message);
+            }
         });
 
         socket.on('unsubscribe_location', ({ bookingId }) => {
             socket.leave(`location_${bookingId}`);
         });
 
-        socket.on('location_update', ({ bookingId, location }) => {
-            socket.to(`location_${bookingId}`).emit('worker_location_update', { bookingId, location });
+        socket.on('location_update', async ({ bookingId, location }) => {
+            try {
+                if (userRole !== 'worker') return;
+
+                const booking = await Booking.findById(bookingId).select('workerId');
+                if (!booking || String(booking.workerId) !== String(userId)) return;
+
+                socket.to(`location_${bookingId}`).emit('worker_location_update', { bookingId, location });
+            } catch (err) {
+                console.error('Location update error:', err.message);
+            }
         });
 
         socket.on('disconnect', () => {

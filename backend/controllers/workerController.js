@@ -2,6 +2,17 @@ const Worker = require('../models/Worker');
 const Booking = require('../models/Booking');
 const { calculateWorkerScore } = require('../utils/workerRanking');
 const { createAuditLog } = require('../services/auditService');
+const { exactMatch } = require('../utils/escapeRegex');
+
+const PUBLIC_WORKER_FIELDS = [
+    'name', 'phone', 'whatsapp', 'services', 'skills', 'experience', 'expectedCharge',
+    'city', 'area', 'radius', 'location', 'isAvailable', 'workingHoursStart',
+    'workingHoursEnd', 'emergencyAvailable', 'preferredAreas', 'maxTravelDistance',
+    'weeklyOffDay', 'verificationStatus', 'profilePhotoUrl', 'phoneVerified',
+    'isVerified', 'trustScore', 'averageRating', 'totalReviews', 'ratingBreakdown',
+    'badges', 'totalRatings', 'completedJobs', 'responseTime', 'profileCompletion',
+    'role'
+].join(' ');
 
 // @desc    Get all workers (with optional geolocation filtering & smart ranking)
 // @route   GET /api/v1/workers
@@ -13,15 +24,15 @@ exports.getWorkers = async (req, res) => {
 
         if (service) {
             query.$or = [
-                { services: { $in: [new RegExp(`^${service}$`, 'i')] } },
-                { skills: { $in: [new RegExp(`^${service}$`, 'i')] } }
+                { services: { $in: [exactMatch(service)] } },
+                { skills: { $in: [exactMatch(service)] } }
             ];
         }
         if (city && city !== 'All Cities') {
-            query.city = new RegExp(`^${city}$`, 'i');
+            query.city = exactMatch(city);
         }
         if (area) {
-            query.area = new RegExp(`^${area}$`, 'i');
+            query.area = exactMatch(area);
         }
 
         if (lng && lat && distance) {
@@ -33,7 +44,7 @@ exports.getWorkers = async (req, res) => {
             };
         }
 
-        const workers = await Worker.find(query);
+        const workers = await Worker.find(query).select(PUBLIC_WORKER_FIELDS);
 
         if (smart === 'true') {
             const searchParams = { service, city, area, latitude: lat, longitude: lng, urgency, maxBudget, preferredTime };
@@ -74,14 +85,14 @@ exports.smartMatchWorkers = async (req, res) => {
 
         if (service) {
             query.$or = [
-                { services: { $in: [new RegExp(`^${service}$`, 'i')] } },
-                { skills: { $in: [new RegExp(`^${service}$`, 'i')] } }
+                { services: { $in: [exactMatch(service)] } },
+                { skills: { $in: [exactMatch(service)] } }
             ];
         }
-        if (city && city !== 'All Cities') query.city = new RegExp(`^${city}$`, 'i');
-        if (area) query.area = new RegExp(`^${area}$`, 'i');
+        if (city && city !== 'All Cities') query.city = exactMatch(city);
+        if (area) query.area = exactMatch(area);
 
-        const workers = await Worker.find(query);
+        const workers = await Worker.find(query).select(PUBLIC_WORKER_FIELDS);
         const searchParams = { service, city, area, latitude, longitude, urgency, maxBudget, preferredTime };
         
         // Phase 9: Collaborative Filtering
@@ -113,7 +124,7 @@ exports.emergencyMatchWorkers = async (req, res) => {
         const { service, city, area, latitude, longitude } = req.query;
         let query = { isBlocked: false, emergencyAvailable: true, isAvailable: true };
 
-        const workers = await Worker.find(query);
+        const workers = await Worker.find(query).select(PUBLIC_WORKER_FIELDS);
         const searchParams = { service, city, area, latitude, longitude, urgency: 'emergency' };
         
         let rankedWorkers = workers.map(w => {
@@ -138,7 +149,7 @@ exports.emergencyMatchWorkers = async (req, res) => {
 // @access  Public
 exports.getWorker = async (req, res) => {
     try {
-        const worker = await Worker.findById(req.params.id);
+        const worker = await Worker.findById(req.params.id).select(PUBLIC_WORKER_FIELDS);
         if (!worker) {
             return res.status(404).json({ success: false, error: 'Worker not found' });
         }
@@ -153,6 +164,10 @@ exports.getWorker = async (req, res) => {
 // @access  Private/Worker
 exports.updateAvailability = async (req, res) => {
     try {
+        if (String(req.user.id) !== String(req.params.id)) {
+            return res.status(403).json({ success: false, message: 'You can only update your own availability' });
+        }
+
         const { isAvailable } = req.body;
         const worker = await Worker.findByIdAndUpdate(req.params.id, { isAvailable }, { new: true });
         
@@ -180,6 +195,10 @@ exports.updateAvailability = async (req, res) => {
 // @access  Private/Worker
 exports.updateWorkingHours = async (req, res) => {
     try {
+        if (String(req.user.id) !== String(req.params.id)) {
+            return res.status(403).json({ success: false, message: 'You can only update your own working hours' });
+        }
+
         const { workingHoursStart, workingHoursEnd, emergencyAvailable, weeklyOffDay } = req.body;
         const worker = await Worker.findByIdAndUpdate(req.params.id, { 
             workingHoursStart, workingHoursEnd, emergencyAvailable, weeklyOffDay 

@@ -64,7 +64,7 @@ const AdminAnalytics = () => {
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <h1 className="text-2xl font-bold text-gray-800">Advanced Analytics</h1>
                 <div className="flex gap-4">
-                    <select 
+                    <select aria-label="Filter by city" 
                         value={city} 
                         onChange={(e) => setCity(e.target.value)}
                         className="bg-white border border-gray-300 rounded-md px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
@@ -75,7 +75,7 @@ const AdminAnalytics = () => {
                         <option value="Bangalore">Bangalore</option>
                         <option value="Pune">Pune</option>
                     </select>
-                    <select 
+                    <select aria-label="Date range" 
                         value={dateRange} 
                         onChange={(e) => setDateRange(e.target.value)}
                         className="bg-white border border-gray-300 rounded-md px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"

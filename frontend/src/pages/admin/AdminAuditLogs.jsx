@@ -97,28 +97,28 @@ const AdminAuditLogs = () => {
 
             {/* Filters */}
             <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
-                <input 
+                <input aria-label="Search action or description..." 
                     type="text" 
                     placeholder="Search action or description..." 
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     className="border border-gray-200 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-primary outline-none w-full"
                 />
-                <select value={actorRole} onChange={(e) => setActorRole(e.target.value)} className="border border-gray-200 rounded-md px-3 py-2 text-sm w-full">
+                <select aria-label="Filter by role" value={actorRole} onChange={(e) => setActorRole(e.target.value)} className="border border-gray-200 rounded-md px-3 py-2 text-sm w-full">
                     <option value="">All Roles</option>
                     <option value="admin">Admin</option>
                     <option value="worker">Worker</option>
                     <option value="customer">Customer</option>
                     <option value="system">System</option>
                 </select>
-                <select value={severity} onChange={(e) => setSeverity(e.target.value)} className="border border-gray-200 rounded-md px-3 py-2 text-sm w-full">
+                <select aria-label="Filter by severity" value={severity} onChange={(e) => setSeverity(e.target.value)} className="border border-gray-200 rounded-md px-3 py-2 text-sm w-full">
                     <option value="">All Severities</option>
                     <option value="low">Low</option>
                     <option value="medium">Medium</option>
                     <option value="high">High</option>
                     <option value="critical">Critical</option>
                 </select>
-                <select value={dateRange} onChange={(e) => setDateRange(e.target.value)} className="border border-gray-200 rounded-md px-3 py-2 text-sm w-full">
+                <select aria-label="Filter by date range" value={dateRange} onChange={(e) => setDateRange(e.target.value)} className="border border-gray-200 rounded-md px-3 py-2 text-sm w-full">
                     <option value="">All Time</option>
                     <option value="7d">Last 7 Days</option>
                     <option value="30d">Last 30 Days</option>

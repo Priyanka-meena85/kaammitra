@@ -14,6 +14,8 @@
   --color-border-gray: #E2E8F0;
   --color-text-gray: #52616B;
 
+  --font-sans: "Plus Jakarta Sans", "Noto Sans Devanagari", sans-serif;
+
   --animate-pulse-soft: pulse-soft 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 
   @keyframes pulse-soft {
@@ -31,8 +33,30 @@
 @layer base {
   body {
     @apply bg-bg-warm text-text-gray font-sans;
+    background-image: linear-gradient(135deg, rgba(49, 93, 156, 0.025) 25%, transparent 25%), linear-gradient(315deg, rgba(217, 119, 6, 0.025) 25%, transparent 25%);
+    background-position: 0 0, 18px 18px;
+    background-size: 36px 36px;
   }
   h1, h2, h3, h4, h5, h6 {
     @apply text-navy;
   }
+}
+
+.market-hero {
+  background: linear-gradient(120deg, #f5efe5 0%, #fffaf3 52%, #e9f1f6 100%);
+}
+
+.market-hero-grid {
+  background-image: linear-gradient(rgba(16, 32, 51, 0.055) 1px, transparent 1px), linear-gradient(90deg, rgba(16, 32, 51, 0.055) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: linear-gradient(to bottom, black, transparent 80%);
+}
+
+.reveal-up {
+  animation: reveal-up 600ms ease-out both;
+}
+
+@keyframes reveal-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
 }

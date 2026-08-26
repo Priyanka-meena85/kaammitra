@@ -130,14 +130,15 @@ const Login = () => {
   };
 
   return (
-    <div className="max-w-md mx-auto px-4 py-12">
-      <div className="bg-card-white rounded-3xl shadow-lg border border-border-gray p-8">
+    <div className="market-hero min-h-[calc(100vh-4rem)] py-10 md:py-16 px-4">
+      <div className="max-w-md mx-auto bg-card-white rounded-2xl shadow-xl border border-border-gray p-6 md:p-8">
         <div className="text-center mb-8">
           <div className="w-16 h-16 bg-bg-soft-blue text-primary rounded-full flex items-center justify-center mx-auto mb-4">
             <ShieldCheck size={32} />
           </div>
-          <h1 className="text-2xl font-bold text-navy mb-2">Welcome Back</h1>
-          <p className="text-text-gray text-sm">Login to your KaamMitra account</p>
+          <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-primary mb-2">Your local service account</p>
+          <h1 className="text-3xl font-extrabold text-navy mb-2">Welcome back</h1>
+          <p className="text-text-gray text-sm">Sign in to manage bookings and connect with your local network.</p>
         </div>
 
         {/* Role Selection */}
@@ -158,7 +159,7 @@ const Login = () => {
             <form onSubmit={handleSendOtp} className="space-y-5">
               <div className="relative">
                 <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-border-gray" size={20} />
-                <input type="tel" required placeholder="Phone Number" value={phone} onChange={e => setPhone(e.target.value)} className="w-full pl-10 pr-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-primary" />
+                <input aria-label="Phone Number" type="tel" required placeholder="Phone Number" value={phone} onChange={e => setPhone(e.target.value)} className="w-full pl-10 pr-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-primary" />
               </div>
               <button disabled={isLoading} type="submit" className="w-full bg-primary text-white font-bold text-lg py-3 rounded-xl shadow-md hover:bg-primary-hover transition-all disabled:opacity-50">
                 {isLoading ? 'Sending...' : 'Send OTP'}
@@ -172,7 +173,7 @@ const Login = () => {
               </div>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-border-gray" size={20} />
-                <input type="text" required placeholder="Enter 6-digit OTP (123456)" value={otp} onChange={e => setOtp(e.target.value)} className="w-full pl-10 pr-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-primary text-center tracking-widest text-lg" maxLength={6} />
+                <input aria-label="Enter 6-digit OTP (123456)" type="text" required placeholder="Enter 6-digit OTP (123456)" value={otp} onChange={e => setOtp(e.target.value)} className="w-full pl-10 pr-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-primary text-center tracking-widest text-lg" maxLength={6} />
               </div>
               <button disabled={isLoading} type="submit" className="w-full bg-primary text-white font-bold text-lg py-3 rounded-xl shadow-md hover:bg-primary-hover transition-all disabled:opacity-50">
                 {isLoading ? 'Verifying...' : 'Verify & Login'}
@@ -193,11 +194,11 @@ const Login = () => {
           <form onSubmit={handlePasswordLogin} className="space-y-5">
             <div className="relative">
               {role === 'admin' ? <User className="absolute left-3 top-1/2 -translate-y-1/2 text-border-gray" size={20} /> : <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-border-gray" size={20} />}
-              <input type={role === 'admin' ? 'text' : 'tel'} required placeholder={role === 'admin' ? "Username" : "Phone Number"} value={phone} onChange={e => setPhone(e.target.value)} className="w-full pl-10 pr-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-primary" />
+              <input aria-label={role === 'admin' ? "Username" : "Phone Number"} type={role === 'admin' ? 'text' : 'tel'} required placeholder={role === 'admin' ? "Username" : "Phone Number"} value={phone} onChange={e => setPhone(e.target.value)} className="w-full pl-10 pr-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-primary" />
             </div>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-border-gray" size={20} />
-              <input type="password" required placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} className="w-full pl-10 pr-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-primary" />
+              <input aria-label="Password" type="password" required placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} className="w-full pl-10 pr-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-primary" />
             </div>
             <button disabled={isLoading} type="submit" className="w-full bg-primary text-white font-bold text-lg py-3 rounded-xl shadow-md hover:bg-primary-hover transition-all disabled:opacity-50">
               {isLoading ? 'Loading...' : 'Login'}

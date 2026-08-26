@@ -80,7 +80,7 @@ const ReviewModal = ({ isOpen, onClose, bookingId, targetName, onSuccess }) => {
 
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Headline</label>
-                        <input
+                        <input aria-label="Headline"
                             type="text"
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
@@ -91,7 +91,7 @@ const ReviewModal = ({ isOpen, onClose, bookingId, targetName, onSuccess }) => {
 
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Detailed Review</label>
-                        <textarea
+                        <textarea aria-label="Detailed Review"
                             value={comment}
                             onChange={(e) => setComment(e.target.value)}
                             rows="3"

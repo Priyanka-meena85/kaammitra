@@ -102,21 +102,28 @@ const Home = () => {
         <meta name="description" content="Find trusted local workers for your everyday needs instantly. Plumbers, electricians, cleaners, and more in your city." />
       </Helmet>
       {/* Hero Section */}
-      <section className="bg-gradient-to-br from-blue-50 to-blue-100 py-16 md:py-24">
+      <section className="market-hero relative overflow-hidden py-12 md:py-20">
+        <div className="market-hero-grid absolute inset-0 pointer-events-none" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid md:grid-cols-2 gap-12 items-center">
+          <div className="grid md:grid-cols-[1.1fr_0.9fr] gap-10 lg:gap-16 items-center relative">
             
             {/* Left Content */}
-            <div>
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-navy leading-tight mb-6">
-                Kaam bolo, <span className="text-primary">trusted worker</span> pao.
+            <div className="reveal-up">
+              <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-white/75 px-3 py-1.5 text-xs font-extrabold uppercase tracking-wider text-primary mb-5">
+                <span className="h-2 w-2 rounded-full bg-accent-green animate-pulse" /> Trusted help, close to home
+              </div>
+              <h1 className="text-4xl md:text-5xl lg:text-[4.25rem] font-extrabold text-navy leading-[1.05] mb-5">
+                Ghar ka kaam? <span className="text-primary">Mitra bulao.</span>
               </h1>
-              <p className="text-lg md:text-xl text-text-gray mb-8 max-w-lg">
-                Find verified nearby workers for home, shop and business services by voice, call, WhatsApp or simple booking.
+              <p className="text-base md:text-lg text-text-gray mb-7 max-w-lg leading-relaxed">
+                Verified electricians, plumbers and cleaners from your area. See real ratings, know the price, and book with confidence.
               </p>
-              
-              <div className="mb-8 max-w-md bg-white p-6 rounded-2xl shadow-lg border border-border-gray">
-                <h3 className="text-xl font-bold text-navy mb-4">Find Best Worker</h3>
+
+              <div className="mb-7 max-w-xl bg-white/95 p-4 md:p-5 rounded-2xl shadow-xl border border-white">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-extrabold text-navy">What do you need done?</h3>
+                  <span className="text-xs font-bold text-accent-green">Free to search</span>
+                </div>
                 <form onSubmit={(e) => {
                   e.preventDefault();
                   const service = e.target.service.value;
@@ -131,18 +138,19 @@ const Home = () => {
                   if (urgency === 'emergency') url += `&urgency=emergency`;
                   if (maxBudget) url += `&maxBudget=${encodeURIComponent(maxBudget)}`;
                   navigate(url);
-                }} className="space-y-4">
+                }} className="space-y-3">
                   <div>
-                    <label className="block text-sm font-bold text-navy mb-1">What service do you need?</label>
-                    <input name="service" type="text" placeholder="e.g. Plumber, Electrician" className="w-full px-4 py-2 rounded-xl border border-border-gray focus:ring-2 focus:ring-primary focus:outline-none" />
+                    <label htmlFor="hero-service" className="sr-only">Service you need</label>
+                    <input id="hero-service" name="service" type="text" placeholder="Try “fan repair” or “plumber”" className="w-full px-4 py-3 rounded-xl border border-border-gray bg-bg-warm focus:ring-2 focus:ring-primary focus:outline-none" />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-sm font-bold text-navy mb-1">City</label>
-                      <select 
-                        value={selectedCity} 
+                      <label htmlFor="hero-city" className="sr-only">City</label>
+                      <select
+                        id="hero-city"
+                        value={selectedCity}
                         onChange={handleCityChange}
-                        className="w-full px-4 py-2 rounded-xl border border-border-gray focus:ring-2 focus:ring-primary focus:outline-none"
+                        className="w-full px-4 py-3 rounded-xl border border-border-gray bg-bg-warm focus:ring-2 focus:ring-primary focus:outline-none"
                       >
                         <option value="">All Cities</option>
                         {[...new Set((Array.isArray(areas) ? areas : []).map(a => a.city))].map(city => (
@@ -152,25 +160,25 @@ const Home = () => {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-sm font-bold text-navy mb-1">Area</label>
-                      <input name="area" type="text" placeholder="e.g. Vaishali Nagar" className="w-full px-4 py-2 rounded-xl border border-border-gray focus:ring-2 focus:ring-primary focus:outline-none" />
+                      <label htmlFor="hero-area" className="sr-only">Area or landmark</label>
+                      <input id="hero-area" name="area" type="text" placeholder="Area or landmark" className="w-full px-4 py-3 rounded-xl border border-border-gray bg-bg-warm focus:ring-2 focus:ring-primary focus:outline-none" />
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-sm font-bold text-navy mb-1">Urgency</label>
-                      <select name="urgency" className="w-full px-4 py-2 rounded-xl border border-border-gray focus:ring-2 focus:ring-primary focus:outline-none">
+                      <label htmlFor="hero-urgency" className="sr-only">Urgency</label>
+                      <select id="hero-urgency" name="urgency" className="w-full px-4 py-3 rounded-xl border border-border-gray bg-bg-warm focus:ring-2 focus:ring-primary focus:outline-none">
                         <option value="normal">Normal</option>
                         <option value="emergency">Emergency</option>
                       </select>
                     </div>
                     <div>
-                      <label className="block text-sm font-bold text-navy mb-1">Budget (₹)</label>
-                      <input name="maxBudget" type="number" placeholder="Optional" className="w-full px-4 py-2 rounded-xl border border-border-gray focus:ring-2 focus:ring-primary focus:outline-none" />
+                      <label htmlFor="hero-budget" className="sr-only">Maximum budget in rupees</label>
+                      <input id="hero-budget" name="maxBudget" type="number" min="0" step="50" placeholder="Budget (optional)" className="w-full px-4 py-3 rounded-xl border border-border-gray bg-bg-warm focus:ring-2 focus:ring-primary focus:outline-none" />
                     </div>
                   </div>
-                  <button type="submit" className="w-full bg-primary hover:bg-primary-hover text-white px-6 py-3 rounded-xl font-bold text-lg shadow-md transition-all">
-                    Find Best Match
+                  <button type="submit" className="w-full bg-primary hover:bg-primary-hover text-white px-6 py-3.5 rounded-xl font-extrabold shadow-md transition-all">
+                    Find trusted workers <span aria-hidden="true">→</span>
                   </button>
                 </form>
               </div>
@@ -180,8 +188,8 @@ const Home = () => {
                   <h3 className="text-lg font-bold text-red-500 mb-2">KaamMitra is not active in your area yet.</h3>
                   <p className="text-text-gray mb-4 text-sm">Request a launch in your area and we'll notify you!</p>
                   <form onSubmit={handleLaunchRequest} className="space-y-3">
-                    <input type="text" required placeholder="Your Name" value={launchFormData.name} onChange={e => setLaunchFormData({...launchFormData, name: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-border-gray focus:ring-2 focus:ring-primary" />
-                    <input type="tel" required placeholder="Phone Number" value={launchFormData.phone} onChange={e => setLaunchFormData({...launchFormData, phone: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-border-gray focus:ring-2 focus:ring-primary" />
+                    <input aria-label="Your Name" type="text" required placeholder="Your Name" value={launchFormData.name} onChange={e => setLaunchFormData({...launchFormData, name: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-border-gray focus:ring-2 focus:ring-primary" />
+                    <input aria-label="Phone Number" type="tel" required placeholder="Phone Number" value={launchFormData.phone} onChange={e => setLaunchFormData({...launchFormData, phone: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-border-gray focus:ring-2 focus:ring-primary" />
                     <button type="submit" className="w-full bg-primary text-white font-bold py-2 rounded-xl shadow hover:bg-primary-hover">Request Launch in My Area</button>
                     <button type="button" onClick={() => navigate('/callback-request')} className="w-full bg-card-white text-primary border border-primary font-bold py-2 rounded-xl shadow hover:bg-bg-soft-blue">Request Callback Instead</button>
                   </form>
@@ -189,10 +197,10 @@ const Home = () => {
               )}
               
               {!showLaunchRequest && (
-                <div className="flex flex-wrap gap-4 mb-8">
+                  <div className="flex flex-wrap gap-3 mb-7">
                   <button 
                     onClick={() => navigate('/worker-register')}
-                    className="bg-card-white hover:bg-bg-warm text-primary border border-primary/30 px-6 py-3 rounded-xl font-bold text-lg shadow-sm hover:shadow-md transition-all"
+                    className="bg-white/80 hover:bg-white text-primary border border-primary/30 px-5 py-2.5 rounded-xl font-bold shadow-sm hover:shadow-md transition-all"
                   >
                     I am Worker (वर्कर बनें)
                   </button>

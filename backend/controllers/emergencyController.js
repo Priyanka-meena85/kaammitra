@@ -3,7 +3,9 @@ const { createAuditLog } = require('../services/auditService');
 
 exports.createEmergencyLead = async (req, res) => {
     try {
-        const lead = await EmergencyLead.create(req.body);
+        // Public endpoint: status and worker assignment stay admin-owned.
+        const { service, phone, latitude, longitude, area, note } = req.body;
+        const lead = await EmergencyLead.create({ service, phone, latitude, longitude, area, note });
 
         const { createNotification } = require('../services/notificationService');
         const Admin = require('../models/Admin');
@@ -18,12 +20,14 @@ exports.createEmergencyLead = async (req, res) => {
         await createAuditLog({
             actorId: null,
             actorRole: 'customer',
-            actorName: lead.customerName || 'Unknown Customer',
+            actorName: lead.phone || 'Unknown Customer',
             action: 'EMERGENCY_LEAD_CREATED',
             entityType: 'EmergencyLead',
             entityId: lead._id,
-            description: `Emergency lead created for service: ${lead.serviceRequired}`,
-            metadata: { phone: lead.customerPhone },
+            // These read `service`/`phone`; the old `serviceRequired`/`customerName`
+            // fields don't exist on the model and always logged undefined.
+            description: `Emergency lead created for service: ${lead.service}`,
+            metadata: { phone: lead.phone },
             ipAddress: req.ip,
             userAgent: req.get('user-agent'),
             severity: 'high'
@@ -31,6 +35,10 @@ exports.createEmergencyLead = async (req, res) => {
 
         res.status(201).json({ success: true, data: lead });
     } catch (err) {
+        if (err.name === 'ValidationError') {
+            return res.status(400).json({ success: false, message: err.message });
+        }
+        console.error('createEmergencyLead error:', err.message);
         res.status(500).json({ success: false, message: 'Server error' });
     }
 };

@@ -201,8 +201,9 @@ const WorkerRegister = () => {
   };
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8 md:py-12">
-      <div className="bg-card-white rounded-3xl shadow-lg border border-border-gray p-6 md:p-8">
+    <div className="market-hero min-h-[calc(100vh-4rem)] py-8 md:py-12 px-4">
+      <div className="max-w-2xl mx-auto">
+      <div className="bg-card-white rounded-2xl shadow-xl border border-border-gray p-6 md:p-8">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-navy mb-2">Become a KaamMitra</h1>
           <p className="text-text-gray">Register as a worker and start getting jobs near you.</p>
@@ -222,7 +223,7 @@ const WorkerRegister = () => {
             <h2 className="text-xl font-bold text-navy text-center mb-4">Verify your phone number</h2>
             <div className="relative">
               <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-border-gray" size={20} />
-              <input 
+              <input aria-label="10-digit Phone Number" 
                 type="tel" 
                 maxLength="10"
                 value={phone}
@@ -241,7 +242,7 @@ const WorkerRegister = () => {
               <>
                 <div className="relative">
                   <ShieldCheck className="absolute left-3 top-1/2 -translate-y-1/2 text-border-gray" size={20} />
-                  <input 
+                  <input aria-label="Enter 6-digit OTP" 
                     type="text" 
                     maxLength="6"
                     value={otp}
@@ -272,11 +273,11 @@ const WorkerRegister = () => {
             <div className="grid md:grid-cols-2 gap-6">
               <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 text-border-gray" size={20} />
-                <input type="text" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="Full Name" className="w-full pl-10 pr-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+                <input aria-label="Full Name" type="text" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="Full Name" className="w-full pl-10 pr-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500 focus:outline-none" />
               </div>
               <div className="relative">
                 <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-primary" size={20} />
-                <input type="tel" value={phone} readOnly className="w-full pl-10 pr-4 py-3 rounded-xl border border-green-200 bg-green-50 text-navy font-bold focus:outline-none" />
+                <input aria-label="Verified phone number" type="tel" value={phone} readOnly className="w-full pl-10 pr-4 py-3 rounded-xl border border-green-200 bg-green-50 text-navy font-bold focus:outline-none" />
                 <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 text-green-500" size={20} />
               </div>
             </div>
@@ -284,11 +285,11 @@ const WorkerRegister = () => {
             <div className="grid md:grid-cols-2 gap-6">
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-border-gray" size={20} />
-                <input type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} placeholder="Email (Optional)" className="w-full pl-10 pr-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+                <input aria-label="Email (Optional)" type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} placeholder="Email (Optional)" className="w-full pl-10 pr-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500 focus:outline-none" />
               </div>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-border-gray" size={20} />
-                <input type="password" required minLength="6" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} placeholder="Create Password" className="w-full pl-10 pr-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+                <input aria-label="Create Password" type="password" required minLength="6" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} placeholder="Create Password" className="w-full pl-10 pr-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500 focus:outline-none" />
               </div>
             </div>
 
@@ -297,7 +298,7 @@ const WorkerRegister = () => {
                 <label className="block text-sm font-medium text-text-gray mb-2">Service Category</label>
                 <div className="relative">
                   <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 text-border-gray" size={20} />
-                  <select required value={formData.serviceCategory} onChange={e => setFormData({...formData, serviceCategory: e.target.value})} className="w-full pl-10 pr-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500 focus:outline-none bg-card-white appearance-none">
+                  <select aria-label="Service Category" required value={formData.serviceCategory} onChange={e => setFormData({...formData, serviceCategory: e.target.value})} className="w-full pl-10 pr-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500 focus:outline-none bg-card-white appearance-none">
                     <option value="">Select Service...</option>
                     {(Array.isArray(services) ? services : []).map(s => (
                       <option key={s.id} value={s.id}>{s.name} ({s.hindiName})</option>
@@ -309,7 +310,7 @@ const WorkerRegister = () => {
                 <label className="block text-sm font-medium text-text-gray mb-2">Experience (Years)</label>
                 <div className="relative">
                   <Wrench className="absolute left-3 top-1/2 -translate-y-1/2 text-border-gray" size={20} />
-                  <input type="number" required value={formData.experience} onChange={e => setFormData({...formData, experience: e.target.value})} placeholder="e.g. 5" className="w-full pl-10 pr-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+                  <input aria-label="Experience (Years)" type="number" required value={formData.experience} onChange={e => setFormData({...formData, experience: e.target.value})} placeholder="e.g. 5" className="w-full pl-10 pr-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500 focus:outline-none" />
                 </div>
               </div>
             </div>
@@ -319,30 +320,30 @@ const WorkerRegister = () => {
                 <label className="block text-sm font-medium text-text-gray mb-2">Expected Charge (₹)</label>
                 <div className="relative">
                   <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 text-border-gray" size={20} />
-                  <input type="number" required value={formData.expectedCharge} onChange={e => setFormData({...formData, expectedCharge: e.target.value})} placeholder="e.g. 300" className="w-full pl-10 pr-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+                  <input aria-label="Expected Charge (₹)" type="number" required value={formData.expectedCharge} onChange={e => setFormData({...formData, expectedCharge: e.target.value})} placeholder="e.g. 300" className="w-full pl-10 pr-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500 focus:outline-none" />
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-text-gray mb-2">Skills (Comma separated)</label>
-                <input type="text" value={formData.skills} onChange={e => setFormData({...formData, skills: e.target.value})} placeholder="e.g. AC Repair, Wiring" className="w-full px-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+                <input aria-label="Skills (Comma separated)" type="text" value={formData.skills} onChange={e => setFormData({...formData, skills: e.target.value})} placeholder="e.g. AC Repair, Wiring" className="w-full px-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500 focus:outline-none" />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <select required value={formData.city} onChange={e => setFormData({...formData, city: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500 focus:outline-none appearance-none bg-white">
+              <select aria-label="City" required value={formData.city} onChange={e => setFormData({...formData, city: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500 focus:outline-none appearance-none bg-white">
                 <option value="">Select City</option>
                 <option value="Tonk">Tonk</option>
                 <option value="Ajmer">Ajmer</option>
                 <option value="Jaipur">Jaipur</option>
                 <option value="Other">Other</option>
               </select>
-              <input type="text" required value={formData.area} onChange={e => setFormData({...formData, area: e.target.value})} placeholder="Area / Locality" className="w-full px-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+              <input aria-label="Area / Locality" type="text" required value={formData.area} onChange={e => setFormData({...formData, area: e.target.value})} placeholder="Area / Locality" className="w-full px-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500 focus:outline-none" />
             </div>
 
             <div>
               <div className="relative">
                 <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-border-gray" size={20} />
-                <input 
+                <input aria-label="Complete Home Address" 
                   type="text" 
                   required 
                   value={formData.address}
@@ -370,13 +371,13 @@ const WorkerRegister = () => {
               <label className="block text-sm font-medium text-text-gray mb-2 flex items-center gap-2">
                 <Image size={18} className="text-text-gray" /> Profile Photo
               </label>
-              <input type="file" onChange={(e) => handleFileUpload(e, 'profilePhotoUrl')} accept="image/*" className="w-full text-sm text-text-gray file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-bg-soft-blue file:text-primary-hover hover:file:bg-bg-soft-blue" />
+              <input aria-label="Profile Photo" type="file" onChange={(e) => handleFileUpload(e, 'profilePhotoUrl')} accept="image/*" className="w-full text-sm text-text-gray file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-bg-soft-blue file:text-primary-hover hover:file:bg-bg-soft-blue" />
               {formData.profilePhotoUrl && <p className="text-green-500 text-sm mt-1">✓ Uploaded successfully</p>}
             </div>
 
             <div>
               <label className="block text-sm font-medium text-text-gray mb-2">Document Type</label>
-              <select value={formData.documentType} onChange={e => setFormData({...formData, documentType: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500 focus:outline-none appearance-none bg-white">
+              <select aria-label="Document Type" value={formData.documentType} onChange={e => setFormData({...formData, documentType: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500 focus:outline-none appearance-none bg-white">
                 <option value="Aadhaar">Aadhaar</option>
                 <option value="Voter ID">Voter ID</option>
                 <option value="Driving License">Driving License</option>
@@ -388,7 +389,7 @@ const WorkerRegister = () => {
               <label className="block text-sm font-medium text-text-gray mb-2 flex items-center gap-2">
                 <FileText size={18} className="text-text-gray" /> ID Document
               </label>
-              <input type="file" onChange={(e) => handleFileUpload(e, 'idDocumentUrl')} accept="image/*,.pdf" className="w-full text-sm text-text-gray file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-bg-soft-blue file:text-primary-hover hover:file:bg-bg-soft-blue" />
+              <input aria-label="ID Document" type="file" onChange={(e) => handleFileUpload(e, 'idDocumentUrl')} accept="image/*,.pdf" className="w-full text-sm text-text-gray file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-bg-soft-blue file:text-primary-hover hover:file:bg-bg-soft-blue" />
               {formData.idDocumentUrl && <p className="text-green-500 text-sm mt-1">✓ Uploaded successfully</p>}
             </div>
 
@@ -396,9 +397,9 @@ const WorkerRegister = () => {
               <div>
                 <label className="block text-sm font-medium text-text-gray mb-2">Working Hours</label>
                 <div className="flex gap-2 items-center">
-                  <input type="time" value={formData.workingHoursStart} onChange={e => setFormData({...formData, workingHoursStart: e.target.value})} className="w-full px-3 py-2 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+                  <input aria-label="Working hours start time" type="time" value={formData.workingHoursStart} onChange={e => setFormData({...formData, workingHoursStart: e.target.value})} className="w-full px-3 py-2 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500 focus:outline-none" />
                   <span>to</span>
-                  <input type="time" value={formData.workingHoursEnd} onChange={e => setFormData({...formData, workingHoursEnd: e.target.value})} className="w-full px-3 py-2 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+                  <input aria-label="Working hours end time" type="time" value={formData.workingHoursEnd} onChange={e => setFormData({...formData, workingHoursEnd: e.target.value})} className="w-full px-3 py-2 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500 focus:outline-none" />
                 </div>
               </div>
               <div>
@@ -420,6 +421,7 @@ const WorkerRegister = () => {
           </form>
         )}
         <div id="recaptcha-container"></div>
+      </div>
       </div>
     </div>
   );

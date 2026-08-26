@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Briefcase, IndianRupee, Settings, User, CheckCircle, XCircle, PhoneCall, MessageCircle, AlertCircle, Clock, Bell } from 'lucide-react';
+import { Briefcase, IndianRupee, Settings, User, CheckCircle, XCircle, PhoneCall, MessageCircle, AlertCircle, AlertTriangle, Clock, Bell, Star } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import api from '../utils/api';
 import toast from 'react-hot-toast';
 import { useSocket } from '../context/SocketContext';
 import EmptyState from '../components/EmptyState';
@@ -239,15 +240,15 @@ const WorkerDashboard = () => {
             <form onSubmit={saveWorkingHours} className="space-y-4 pt-4 border-t border-border-gray">
               <div>
                 <label className="block text-sm font-medium text-navy mb-1">Start Time</label>
-                <input type="time" name="workingHoursStart" defaultValue={workerData.workingHoursStart} className="w-full p-2 border rounded-lg" />
+                <input aria-label="Start Time" type="time" name="workingHoursStart" defaultValue={workerData.workingHoursStart} className="w-full p-2 border rounded-lg" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-navy mb-1">End Time</label>
-                <input type="time" name="workingHoursEnd" defaultValue={workerData.workingHoursEnd} className="w-full p-2 border rounded-lg" />
+                <input aria-label="End Time" type="time" name="workingHoursEnd" defaultValue={workerData.workingHoursEnd} className="w-full p-2 border rounded-lg" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-navy mb-1">Weekly Off</label>
-                <select name="weeklyOffDay" defaultValue={workerData.weeklyOffDay} className="w-full p-2 border rounded-lg">
+                <select aria-label="Weekly Off" name="weeklyOffDay" defaultValue={workerData.weeklyOffDay} className="w-full p-2 border rounded-lg">
                   <option value="Sunday">Sunday</option>
                   <option value="Monday">Monday</option>
                   <option value="None">None</option>

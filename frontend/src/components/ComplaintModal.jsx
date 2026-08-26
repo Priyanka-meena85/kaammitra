@@ -1,11 +1,9 @@
 import React, { useState } from 'react';
 import { X, CheckCircle } from 'lucide-react';
 import api from '../utils/api';
-import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 
 const ComplaintModal = ({ isOpen, onClose, workerId, bookingId = null }) => {
-  const { user } = useAuth();
   const [reason, setReason] = useState('');
   const [description, setDescription] = useState('');
   const [submitted, setSubmitted] = useState(false);
@@ -26,19 +24,16 @@ const ComplaintModal = ({ isOpen, onClose, workerId, bookingId = null }) => {
     if (!reason) return;
     
     try {
-      await api.post('/complaints', {
-        customerId: user?._id,
-        workerId: workerId,
-        bookingId: bookingId,
-        reason,
-        description
-      });
+      // customerId and workerId are derived server-side from the booking.
+      await api.post('/complaints', { bookingId, reason, description });
       toast.success('Complaint submitted successfully');
     } catch (err) {
-      toast.error('Failed to submit complaint');
+      // Don't show the success screen when the submission failed.
+      toast.error(err?.response?.data?.message || 'Failed to submit complaint');
       console.error(err);
+      return;
     }
-    
+
     setSubmitted(true);
     setTimeout(() => {
       onClose();
@@ -72,7 +67,7 @@ const ComplaintModal = ({ isOpen, onClose, workerId, bookingId = null }) => {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-navy mb-1">Reason for Complaint</label>
-              <select 
+              <select aria-label="Reason for Complaint" 
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 className="w-full border-border-gray rounded-lg p-3 focus:ring-primary focus:border-primary"
@@ -87,7 +82,7 @@ const ComplaintModal = ({ isOpen, onClose, workerId, bookingId = null }) => {
 
             <div>
               <label className="block text-sm font-medium text-navy mb-1">Description (Optional)</label>
-              <textarea 
+              <textarea aria-label="Description (Optional)" 
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 className="w-full border-border-gray rounded-lg p-3 h-24 focus:ring-primary focus:border-primary"

@@ -35,7 +35,7 @@ const VoiceSearch = ({ onSearch }) => {
       <form onSubmit={handleSubmit} className="flex items-center gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-border-gray" size={20} />
-          <input
+          <input aria-label="Search electrician, plumber..."
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}

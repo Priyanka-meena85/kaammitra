@@ -180,7 +180,7 @@ const Chat = () => {
 
       {/* Input */}
       <div className="p-4 bg-card-white border-t border-border-gray flex gap-2">
-        <input 
+        <input aria-label="Type a message..." 
           type="text" 
           value={input}
           onChange={handleTyping}

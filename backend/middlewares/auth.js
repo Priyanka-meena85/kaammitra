@@ -30,6 +30,14 @@ exports.protect = async (req, res, next) => {
             return res.status(401).json({ success: false, error: 'User not found' });
         }
 
+        // Blocking a worker must revoke access immediately, not just hide them from search.
+        if (user.isBlocked) {
+            return res.status(403).json({
+                success: false,
+                error: 'Your account has been blocked. Please contact KaamMitra support.'
+            });
+        }
+
         req.user = user;
         next();
     } catch (err) {

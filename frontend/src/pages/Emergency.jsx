@@ -123,7 +123,7 @@ const Emergency = () => {
              <label className="block text-sm font-bold text-navy mb-2">Your Phone Number</label>
              <div className="relative">
                 <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                <input 
+                <input aria-label="Your Phone Number" 
                   type="tel" 
                   required
                   value={formData.phone}
@@ -142,7 +142,7 @@ const Emergency = () => {
 
           <div>
              <label className="block text-sm font-bold text-navy mb-2">Any Note? (Optional)</label>
-             <input 
+             <input aria-label="Any Note? (Optional)" 
                type="text" 
                value={formData.note}
                onChange={(e) => setFormData({...formData, note: e.target.value})}

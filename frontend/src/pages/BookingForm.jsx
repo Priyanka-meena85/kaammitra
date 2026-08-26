@@ -10,8 +10,10 @@ import api from '../utils/api';
 import toast from 'react-hot-toast';
 import { loadRazorpayScript } from '../utils/loadRazorpay';
 import { createPaymentOrder, verifyPayment } from '../api/paymentApi';
+import { services as staticServices } from '../data/services';
 
 const bookingSchema = z.object({
+  service: z.string().min(1, 'Please choose the type of work'),
   description: z.string().min(10, 'Problem description must be at least 10 characters'),
   address: z.string().min(10, 'Please provide a complete address'),
   date: z.string().min(1, 'Please select a date'),
@@ -19,6 +21,11 @@ const bookingSchema = z.object({
   contact: z.string().regex(/^[0-9]{10}$/, 'Contact must be exactly 10 digits'),
   urgency: z.enum(['Normal', 'Urgent'])
 });
+
+// Shown as fallback if /services is unreachable, so the form still works offline.
+const FALLBACK_SERVICES = staticServices.map((s) => s.name);
+
+const todayISO = () => new Date().toISOString().split('T')[0];
 
 const BookingForm = () => {
   const { workerId } = useParams();
@@ -37,6 +44,16 @@ const BookingForm = () => {
   const [step, setStep] = useState(workerId ? 2 : 1);
   const [createdBooking, setCreatedBooking] = useState(null);
   const [paymentLoading, setPaymentLoading] = useState(false);
+  const [serviceOptions, setServiceOptions] = useState(FALLBACK_SERVICES);
+
+  React.useEffect(() => {
+    api.get('/services')
+      .then((res) => {
+        const names = (res?.data?.data || []).map((s) => s.name || s.englishName).filter(Boolean);
+        if (names.length) setServiceOptions(names);
+      })
+      .catch(() => { /* keep the bundled fallback list */ });
+  }, []);
 
   React.useEffect(() => {
     if (!user) {
@@ -62,8 +79,14 @@ const BookingForm = () => {
 
   const { register, handleSubmit, setValue, getValues, formState: { errors } } = useForm({
     resolver: zodResolver(bookingSchema),
-    defaultValues: { urgency: 'Normal' }
+    defaultValues: { urgency: 'Normal', service: '' }
   });
+
+  // When booking a specific worker, preselect the service they offer.
+  React.useEffect(() => {
+    const workerService = worker?.services?.[0];
+    if (workerService) setValue('service', workerService, { shouldValidate: true });
+  }, [worker, setValue]);
 
   const handleVoiceInput = () => {
     setIsListening(true);
@@ -91,52 +114,55 @@ const BookingForm = () => {
       // Fetch suggestions
       setLoadingSuggestions(true);
       try {
-        const url = `/bookings/suggest-workers?service=${encodeURIComponent(data.description)}&area=${encodeURIComponent(data.address)}&preferredDate=${data.date}&preferredTime=${data.time}&urgency=${data.urgency === 'Urgent' ? 'emergency' : 'normal'}`;
-        const res = await api.get(url);
+        // Match on the chosen service, not the free-text problem description, and
+        // leave `area` out — a full street address never matches an area name.
+        const params = new URLSearchParams({
+          service: data.service,
+          preferredDate: data.date,
+          preferredTime: data.time,
+          urgency: data.urgency === 'Urgent' ? 'emergency' : 'normal'
+        });
+        const res = await api.get(`/bookings/suggest-workers?${params.toString()}`);
         const fetchedSuggestions = res.data?.data || [];
         if (fetchedSuggestions.length > 0) {
           setSuggestions(fetchedSuggestions);
           toast.success('Found best matching workers for you!');
           setStep(2);
         } else {
-          toast.error('No workers match your criteria. Try changing time or urgency.');
+          toast.error(`No ${data.service} is free at that time. Try another time or date.`);
         }
       } catch (err) {
-        toast.error('Failed to find workers. Please try again.');
+        toast.error(err?.response?.data?.message || 'Failed to find workers. Please try again.');
       } finally {
         setLoadingSuggestions(false);
       }
       return;
     }
-    
+
     // Create Booking
     try {
       const activeWorker = worker || suggestions.find(s => (s.worker._id || s.worker.id) === selectedWorkerId)?.worker;
       if (!activeWorker) return toast.error('Worker data missing');
 
-      const serviceId = activeWorker.services && activeWorker.services.length > 0 && activeWorker.services[0]._id 
-        ? activeWorker.services[0]._id 
-        : activeWorker.services?.[0] || '60d0fe4f5311236168a109ca';
-
+      // The server owns customerId and totalAmount; it resolves `service` (a name)
+      // to the real Service record.
       const payload = {
-        customerId: user._id,
         workerId: selectedWorkerId,
-        serviceId: serviceId,
+        service: data.service || activeWorker.services?.[0],
         description: data.description,
         address: data.address,
         date: data.date,
         time: data.time,
         urgency: data.urgency,
-        contactNumber: data.contact,
-        totalAmount: activeWorker.expectedCharge || activeWorker.startingPrice || 500
+        contactNumber: data.contact
       };
-      
+
       const res = await api.post('/bookings', payload);
       setCreatedBooking(res.data.data);
       toast.success('Booking created! Please select payment method.');
       setStep(3);
     } catch (err) {
-      toast.error('Failed to submit booking. Please try again.');
+      toast.error(err?.response?.data?.message || 'Failed to submit booking. Please try again.');
     }
   };
 
@@ -225,6 +251,22 @@ const BookingForm = () => {
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
               <div>
+                <label htmlFor="service" className="block text-sm font-medium text-text-gray mb-2">What kind of work?</label>
+                <select
+                  id="service"
+                  {...register('service')}
+                  disabled={step === 2 && !worker}
+                  className={`w-full p-3 rounded-xl border bg-white ${errors.service ? 'border-red-500' : 'border-border-gray'} focus:ring-2 focus:ring-blue-500 focus:outline-none disabled:bg-gray-50`}
+                >
+                  <option value="">Select a service</option>
+                  {serviceOptions.map((name) => (
+                    <option key={name} value={name}>{name}</option>
+                  ))}
+                </select>
+                {errors.service && <p className="text-red-500 text-sm mt-1">{errors.service.message}</p>}
+              </div>
+
+              <div>
                 <div className="flex justify-between items-center mb-2">
                   <label className="block text-sm font-medium text-text-gray">Describe the problem</label>
                   <button 
@@ -235,7 +277,7 @@ const BookingForm = () => {
                     <Mic size={14} /> {isListening ? 'Listening...' : 'Speak Problem'}
                   </button>
                 </div>
-                <textarea
+                <textarea aria-label="Describe the problem"
                   {...register('description')}
                   rows="3"
                   disabled={step === 2 && !worker}
@@ -249,7 +291,7 @@ const BookingForm = () => {
                 <label className="block text-sm font-medium text-text-gray mb-2">Service Address</label>
                 <div className="relative">
                   <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-border-gray" size={20} />
-                  <input
+                  <input aria-label="Service Address"
                     type="text"
                     {...register('address')}
                     disabled={step === 2 && !worker}
@@ -265,8 +307,9 @@ const BookingForm = () => {
                   <label className="block text-sm font-medium text-text-gray mb-2">Preferred Date</label>
                   <div className="relative">
                     <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-border-gray" size={20} />
-                    <input
+                    <input aria-label="Preferred Date"
                       type="date"
+                      min={todayISO()}
                       {...register('date')}
                       disabled={step === 2 && !worker}
                       className={`w-full pl-10 pr-4 py-3 rounded-xl border ${errors.date ? 'border-red-500' : 'border-border-gray'} focus:ring-2 focus:ring-blue-500 focus:outline-none disabled:bg-gray-50`}
@@ -278,7 +321,7 @@ const BookingForm = () => {
                   <label className="block text-sm font-medium text-text-gray mb-2">Preferred Time</label>
                   <div className="relative">
                     <Clock className="absolute left-3 top-1/2 -translate-y-1/2 text-border-gray" size={20} />
-                    <input
+                    <input aria-label="Preferred Time"
                       type="time"
                       {...register('time')}
                       disabled={step === 2 && !worker}
@@ -293,7 +336,7 @@ const BookingForm = () => {
                 <label className="block text-sm font-medium text-text-gray mb-2">Contact Number</label>
                 <div className="relative">
                   <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-border-gray" size={20} />
-                  <input
+                  <input aria-label="Contact Number"
                     type="tel"
                     {...register('contact')}
                     disabled={step === 2 && !worker}

@@ -156,11 +156,12 @@ const Register = () => {
   };
 
   return (
-    <div className="max-w-md mx-auto px-4 py-8 md:py-16">
-      <div className="bg-card-white rounded-3xl shadow-lg border border-border-gray p-6 md:p-8">
+    <div className="market-hero min-h-[calc(100vh-4rem)] py-8 md:py-14 px-4">
+      <div className="max-w-md mx-auto bg-card-white rounded-2xl shadow-xl border border-border-gray p-6 md:p-8">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-navy mb-2">Create Account</h1>
-          <p className="text-text-gray">Join KaamMitra as a Customer</p>
+          <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-primary mb-2">For customers</p>
+          <h1 className="text-3xl font-extrabold text-navy mb-2">Create your account</h1>
+          <p className="text-text-gray">Find trusted local help when you need it.</p>
         </div>
 
         {/* Step Indicator */}
@@ -175,7 +176,7 @@ const Register = () => {
             <h2 className="text-xl font-bold text-navy text-center mb-4">Verify your phone number</h2>
             <div className="relative">
               <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-border-gray" size={20} />
-              <input 
+              <input aria-label="10-digit Phone Number" 
                 type="tel" 
                 maxLength="10"
                 value={phone}
@@ -194,7 +195,7 @@ const Register = () => {
               <>
                 <div className="relative">
                   <ShieldCheck className="absolute left-3 top-1/2 -translate-y-1/2 text-border-gray" size={20} />
-                  <input 
+                  <input aria-label="Enter 6-digit OTP" 
                     type="text" 
                     maxLength="6"
                     value={otp}
@@ -222,35 +223,35 @@ const Register = () => {
           <form onSubmit={handleRegister} className="space-y-4">
             <div className="relative">
               <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-primary" size={20} />
-              <input type="tel" value={phone} readOnly className="w-full pl-10 pr-4 py-3 rounded-xl border border-green-200 bg-green-50 text-navy font-bold focus:outline-none" />
+              <input aria-label="Verified phone number" type="tel" value={phone} readOnly className="w-full pl-10 pr-4 py-3 rounded-xl border border-green-200 bg-green-50 text-navy font-bold focus:outline-none" />
               <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 text-green-500" size={20} />
             </div>
 
             <div className="relative">
               <User className="absolute left-3 top-1/2 -translate-y-1/2 text-border-gray" size={20} />
-              <input type="text" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="Full Name" className="w-full pl-10 pr-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+              <input aria-label="Full Name" type="text" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="Full Name" className="w-full pl-10 pr-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500 focus:outline-none" />
             </div>
             
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-border-gray" size={20} />
-              <input type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} placeholder="Email (Optional)" className="w-full pl-10 pr-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+              <input aria-label="Email (Optional)" type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} placeholder="Email (Optional)" className="w-full pl-10 pr-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500 focus:outline-none" />
             </div>
             
             <div className="grid grid-cols-2 gap-4">
-              <select required value={formData.city} onChange={e => setFormData({...formData, city: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500 focus:outline-none appearance-none bg-white">
+              <select aria-label="City" required value={formData.city} onChange={e => setFormData({...formData, city: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500 focus:outline-none appearance-none bg-white">
                 <option value="">Select City</option>
                 <option value="Tonk">Tonk</option>
                 <option value="Ajmer">Ajmer</option>
                 <option value="Jaipur">Jaipur</option>
                 <option value="Other">Other</option>
               </select>
-              <input type="text" required value={formData.area} onChange={e => setFormData({...formData, area: e.target.value})} placeholder="Area / Locality" className="w-full px-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+              <input aria-label="Area / Locality" type="text" required value={formData.area} onChange={e => setFormData({...formData, area: e.target.value})} placeholder="Area / Locality" className="w-full px-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500 focus:outline-none" />
             </div>
 
             <div>
               <div className="relative">
                 <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-border-gray" size={20} />
-                <input 
+                <input aria-label="Complete Home Address" 
                   type="text" 
                   required 
                   value={formData.address}
@@ -266,7 +267,7 @@ const Register = () => {
 
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-border-gray" size={20} />
-              <input type="password" required minLength="6" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} placeholder="Create Password (Min 6 chars)" className="w-full pl-10 pr-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+              <input aria-label="Create Password (Min 6 chars)" type="password" required minLength="6" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} placeholder="Create Password (Min 6 chars)" className="w-full pl-10 pr-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500 focus:outline-none" />
             </div>
 
             <button disabled={isLoading || !phoneVerified} type="submit" className="w-full bg-orange-500 text-white font-bold text-lg py-4 rounded-xl shadow-lg hover:bg-orange-600 transition-all mt-4 disabled:opacity-50 disabled:cursor-not-allowed">

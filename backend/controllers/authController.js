@@ -7,9 +7,15 @@ const { createAuditLog } = require('../services/auditService');
 
 const sendTokenResponse = (user, statusCode, res) => {
     const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
-        expiresIn: '30d'
+        expiresIn: process.env.JWT_EXPIRE || '30d'
     });
-    res.status(statusCode).json({ success: true, token, user });
+
+    // The login flow loads the document with .select('+password') so it can compare
+    // hashes. Strip the hash before it ever reaches the client.
+    const safeUser = typeof user.toObject === 'function' ? user.toObject() : { ...user };
+    delete safeUser.password;
+
+    res.status(statusCode).json({ success: true, token, user: safeUser });
 };
 
 const normalizeIndianPhone = (value = "") => {
@@ -166,26 +172,28 @@ exports.register = async (req, res) => {
 // @access  Public
 exports.login = async (req, res) => {
     try {
-        const { phone, password, role } = req.body;
+        let { phone, password, role } = req.body;
 
         if (!phone || !password || !role) {
             return res.status(400).json({ success: false, error: 'Please provide phone, password and role' });
         }
         
-        if (role !== 'admin') {
-            phone = String(phone).replace(/\D/g, '').slice(-10);
-        }
-
         let user;
-        if (role === 'customer') {
-            user = await Customer.findOne({ phone }).select('+password');
-        } else if (role === 'worker') {
-            user = await Worker.findOne({ phone }).select('+password');
+        if (role === 'customer' || role === 'worker') {
+            // register() stores phones in E.164 (+91XXXXXXXXXX), while seeds and older
+            // rows hold bare 10-digit numbers. Match every known representation so a
+            // user can sign in with whatever they typed.
+            const variants = getPhoneVariants(phone);
+            const Model = role === 'customer' ? Customer : Worker;
+            user = await Model.findOne({ phone: { $in: variants } }).select('+password');
         } else if (role === 'admin') {
             user = await Admin.findOne({ username: phone }).select('+password');
+        } else {
+            return res.status(400).json({ success: false, error: 'Invalid role' });
         }
 
-        if (!user) {
+        // A missing hash (e.g. an OTP-only account) must fail closed, not throw inside bcrypt.
+        if (!user || !user.password) {
             return res.status(401).json({ success: false, error: 'Invalid credentials' });
         }
 

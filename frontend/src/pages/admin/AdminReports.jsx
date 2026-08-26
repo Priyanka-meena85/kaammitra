@@ -41,7 +41,7 @@ const AdminReports = () => {
                 <div className="flex gap-4 p-4 bg-white rounded-lg shadow-sm border border-gray-100">
                     <div>
                         <label className="block text-xs font-medium text-gray-500 mb-1">City Filter</label>
-                        <select 
+                        <select aria-label="City Filter" 
                             value={city} 
                             onChange={(e) => setCity(e.target.value)}
                             className="bg-gray-50 border border-gray-200 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary w-32"
@@ -55,7 +55,7 @@ const AdminReports = () => {
                     </div>
                     <div>
                         <label className="block text-xs font-medium text-gray-500 mb-1">Date Range</label>
-                        <select 
+                        <select aria-label="Date Range" 
                             value={dateRange} 
                             onChange={(e) => setDateRange(e.target.value)}
                             className="bg-gray-50 border border-gray-200 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary w-32"

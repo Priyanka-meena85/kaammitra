@@ -61,7 +61,7 @@ const Notifications = () => {
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2 bg-white rounded-lg shadow-sm border p-1">
             <FaFilter className="text-gray-400 ml-2" />
-            <select 
+            <select aria-label="Filter notifications" 
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
               className="bg-transparent border-none focus:ring-0 text-sm p-2 outline-none"

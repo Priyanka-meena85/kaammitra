@@ -45,7 +45,26 @@ exports.createOrder = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Cannot pay for cancelled/rejected booking' });
         }
 
-        if (amount <= 0) return res.status(400).json({ success: false, message: 'Invalid amount' });
+        const totalAmount = Number(booking.totalAmount);
+        const requestedAmount = Number(amount);
+        if (!Number.isFinite(requestedAmount) || requestedAmount <= 0) {
+            return res.status(400).json({ success: false, message: 'Invalid amount' });
+        }
+
+        let expectedAmount;
+        if (paymentType === 'advance') {
+            expectedAmount = Math.max(50, Math.round(totalAmount * 0.2));
+        } else if (paymentType === 'full') {
+            expectedAmount = totalAmount;
+        } else if (paymentType === 'remaining') {
+            expectedAmount = totalAmount - (booking.advanceAmount || 0);
+        } else {
+            return res.status(400).json({ success: false, message: 'Invalid payment type' });
+        }
+
+        if (!Number.isFinite(totalAmount) || expectedAmount <= 0 || requestedAmount !== expectedAmount) {
+            return res.status(400).json({ success: false, message: 'Payment amount does not match the booking' });
+        }
 
         // Check for duplicate paid payment for same type
         const existingPayment = await Payment.findOne({
@@ -60,7 +79,7 @@ exports.createOrder = async (req, res) => {
 
         // Create razorpay order
         const options = {
-            amount: Math.round(amount * 100), // amount in paise
+            amount: Math.round(requestedAmount * 100), // amount in paise
             currency: "INR",
             receipt: `rcpt_${bookingId.toString().slice(-6)}_${Date.now()}`
         };
@@ -72,7 +91,7 @@ exports.createOrder = async (req, res) => {
             bookingId,
             customerId: req.user.id,
             workerId: booking.workerId,
-            amount,
+            amount: requestedAmount,
             currency: 'INR',
             paymentType,
             razorpayOrderId: order.id,
@@ -113,6 +132,14 @@ exports.verifyPayment = async (req, res) => {
 
         const payment = await Payment.findById(paymentRecordId);
         if (!payment) return res.status(404).json({ success: false, message: 'Payment record not found' });
+
+        if (payment.customerId.toString() !== req.user.id.toString()) {
+            return res.status(403).json({ success: false, message: 'Unauthorized' });
+        }
+
+        if (payment.bookingId.toString() !== String(bookingId) || payment.razorpayOrderId !== razorpay_order_id) {
+            return res.status(400).json({ success: false, message: 'Payment details do not match the payment order' });
+        }
         
         if (payment.status === 'paid') {
             return res.status(200).json({ success: true, message: 'Payment already verified' });
@@ -169,7 +196,10 @@ exports.verifyPayment = async (req, res) => {
         await payment.save();
 
         // Update Booking
-        const booking = await Booking.findById(bookingId);
+        const booking = await Booking.findById(payment.bookingId);
+        if (!booking || booking.customerId.toString() !== req.user.id.toString()) {
+            return res.status(403).json({ success: false, message: 'Booking access denied' });
+        }
         if (payment.paymentType === 'advance') {
             booking.paymentStatus = 'advance_paid';
             booking.advanceAmount = (booking.advanceAmount || 0) + payment.amount;
@@ -249,6 +279,16 @@ exports.verifyPayment = async (req, res) => {
 // 3. Get Booking Payments
 exports.getBookingPayments = async (req, res) => {
     try {
+        const booking = await Booking.findById(req.params.bookingId).select('customerId workerId');
+        if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
+
+        const isParticipant = [booking.customerId, booking.workerId]
+            .filter(Boolean)
+            .some((participantId) => participantId.toString() === req.user.id.toString());
+        if (req.user.role !== 'admin' && !isParticipant) {
+            return res.status(403).json({ success: false, message: 'Unauthorized' });
+        }
+
         const payments = await Payment.find({ bookingId: req.params.bookingId }).sort({ createdAt: -1 });
         res.status(200).json({ success: true, data: payments });
     } catch (error) {
