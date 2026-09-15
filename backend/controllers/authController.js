@@ -46,67 +46,34 @@ const getPhoneVariants = (phone = "") => {
 exports.register = async (req, res) => {
     try {
         const { 
-            role, name, idToken, password, services, location, address, city, area,
+            role, email, name, password, phone, services, location, address, city, area,
             expectedCharge, skills, experience, workingHoursStart, workingHoursEnd, 
             emergencyAvailable, maxTravelDistance,
             profilePhotoUrl, profilePhotoPublicId, idDocumentUrl, idDocumentPublicId,
             addressProofUrl, addressProofPublicId, documentType
         } = req.body;
 
-        if (!idToken) {
-            return res.status(400).json({ success: false, error: 'Firebase ID token is required' });
+        if (!email || !password || !name) {
+            return res.status(400).json({ success: false, error: 'Please provide name, email and password' });
         }
-
-        if (!firebaseAuth) {
-            return res.status(503).json({ success: false, message: 'Firebase Admin is not configured on the server' });
-        }
-
-        // Verify Firebase Token
-        let decodedToken;
-        try {
-            decodedToken = await firebaseAuth.verifyIdToken(idToken);
-        } catch (error) {
-            console.error("Firebase register verification failed:", error.message);
-            return res.status(401).json({ success: false, error: 'Invalid Firebase ID token' });
-        }
-
-        const { uid, phone_number } = decodedToken;
-
-        if (!phone_number) {
-            return res.status(400).json({ success: false, error: 'Phone number not found in Firebase token' });
-        }
-
-        // Normalize phone number (E.164 format: +91XXXXXXXXXX)
-        const rawPhone = String(phone_number).replace(/\D/g, '');
-        const phone10 = rawPhone.slice(-10);
-        const phoneE164 = `+91${phone10}`;
-        const phoneLookup = [phone10, phoneE164, rawPhone];
 
         let existingUser = null;
 
         if (role === 'worker') {
-            existingUser = await Worker.findOne({ $or: [{ firebaseUid: uid }, { phone: { $in: phoneLookup } }] });
+            existingUser = await Worker.findOne({ email });
         } else {
-            existingUser = await Customer.findOne({ $or: [{ firebaseUid: uid }, { phone: { $in: phoneLookup } }] });
+            existingUser = await Customer.findOne({ email });
         }
         
         if (existingUser) {
-            if (!existingUser.firebaseUid || !existingUser.isPhoneVerified) {
-                existingUser.firebaseUid = uid;
-                existingUser.isPhoneVerified = true;
-                // Update their phone to standard format if it wasn't
-                existingUser.phone = phoneE164;
-                await existingUser.save();
-            }
             const roleName = role === 'worker' ? 'Worker' : 'Customer';
-            return res.status(400).json({ success: false, error: `${roleName} account already exists. Please login as ${role}.` });
+            return res.status(400).json({ success: false, error: `${roleName} account with this email already exists. Please login.` });
         }
 
         if (role === 'worker') {
             const worker = await Worker.create({
-                firebaseUid: uid,
-                name, phone: phoneE164, password, services, location, address, city, area, 
-                phoneVerified: true, isPhoneVerified: true, isVerified: false, verificationStatus: 'Pending Verification', isBlocked: false,
+                name, email, password, phone, services, location, address, city, area, 
+                verificationStatus: 'Pending Verification', isBlocked: false,
                 expectedCharge, skills, experience, workingHoursStart, workingHoursEnd, emergencyAvailable, maxTravelDistance,
                 profilePhotoUrl, profilePhotoPublicId, idDocumentUrl, idDocumentPublicId,
                 addressProofUrl, addressProofPublicId, documentType
@@ -132,7 +99,7 @@ exports.register = async (req, res) => {
                 action: 'WORKER_REGISTERED',
                 entityType: 'Worker',
                 entityId: worker._id,
-                description: 'Worker registered successfully via Firebase',
+                description: 'Worker registered successfully via Email',
                 ipAddress: req.ip,
                 userAgent: req.get('user-agent'),
                 severity: 'medium'
@@ -141,9 +108,7 @@ exports.register = async (req, res) => {
             sendTokenResponse(worker, 201, res);
         } else {
             const customer = await Customer.create({
-                firebaseUid: uid,
-                name, phone: phoneE164, password, location, address, city, area, 
-                phoneVerified: true, isPhoneVerified: true
+                name, email, password, phone, location, address, city, area
             });
             
             await createAuditLog({
@@ -153,7 +118,7 @@ exports.register = async (req, res) => {
                 action: 'CUSTOMER_REGISTERED',
                 entityType: 'Customer',
                 entityId: customer._id,
-                description: 'Customer registered successfully via Firebase',
+                description: 'Customer registered successfully via Email',
                 ipAddress: req.ip,
                 userAgent: req.get('user-agent'),
                 severity: 'low'
@@ -172,27 +137,22 @@ exports.register = async (req, res) => {
 // @access  Public
 exports.login = async (req, res) => {
     try {
-        let { phone, password, role } = req.body;
+        let { email, password, role } = req.body;
 
-        if (!phone || !password || !role) {
-            return res.status(400).json({ success: false, error: 'Please provide phone, password and role' });
+        if (!email || !password || !role) {
+            return res.status(400).json({ success: false, error: 'Please provide email, password and role' });
         }
         
         let user;
         if (role === 'customer' || role === 'worker') {
-            // register() stores phones in E.164 (+91XXXXXXXXXX), while seeds and older
-            // rows hold bare 10-digit numbers. Match every known representation so a
-            // user can sign in with whatever they typed.
-            const variants = getPhoneVariants(phone);
             const Model = role === 'customer' ? Customer : Worker;
-            user = await Model.findOne({ phone: { $in: variants } }).select('+password');
+            user = await Model.findOne({ email }).select('+password');
         } else if (role === 'admin') {
-            user = await Admin.findOne({ username: phone }).select('+password');
+            user = await Admin.findOne({ username: email }).select('+password'); // Using email field for username
         } else {
             return res.status(400).json({ success: false, error: 'Invalid role' });
         }
 
-        // A missing hash (e.g. an OTP-only account) must fail closed, not throw inside bcrypt.
         if (!user || !user.password) {
             return res.status(401).json({ success: false, error: 'Invalid credentials' });
         }
@@ -209,7 +169,7 @@ exports.login = async (req, res) => {
             action: 'USER_LOGIN',
             entityType: 'User',
             entityId: user._id,
-            description: `${role} logged in via password`,
+            description: `${role} logged in via email`,
             ipAddress: req.ip,
             userAgent: req.get('user-agent'),
             severity: 'low'

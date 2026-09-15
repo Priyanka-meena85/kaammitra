@@ -44,6 +44,9 @@ const allowedOrigins = process.env.NODE_ENV === 'production'
 app.use(cors({
   origin: function (origin, callback) {
     if (!origin) return callback(null, true);
+    if (process.env.NODE_ENV !== 'production' && origin.startsWith('http://localhost')) {
+      return callback(null, true);
+    }
     if (allowedOrigins.indexOf(origin) === -1) {
       const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
       return callback(new Error(msg), false);
@@ -113,6 +116,7 @@ app.use('/api/v1/admin/audit-logs', require('./routes/auditRoutes'));
 app.use('/api/v1/admin/exports', require('./routes/exportRoutes'));
 app.use('/api/v1/reviews', require('./routes/reviewRoutes'));
 app.use('/api/v1/safety', require('./routes/safetyRoutes'));
+app.use('/api/v1/ai', require('./routes/ai'));
 
 app.get('/', (req, res) => {
     res.send('KaamMitra API is running...');

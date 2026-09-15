@@ -1,70 +1,23 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Phone, Mail, MapPin, Target, Briefcase, Wrench, IndianRupee, Image, FileText, CheckCircle2, ShieldCheck, Lock } from 'lucide-react';
+import { User, Phone, Mail, MapPin, Target, Briefcase, Wrench, IndianRupee, Image, FileText, Lock } from 'lucide-react';
 import { services } from '../data/services';
 import { useAuth } from '../context/AuthContext';
 import { getUserLocation } from '../utils/location';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
-import { auth } from '../config/firebase';
-import { RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
 
 const WorkerRegister = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
   const [step, setStep] = useState(1);
   
-  // Step 1 State
-  const [phone, setPhone] = useState('');
-  const [otp, setOtp] = useState('');
-  const [otpSent, setOtpSent] = useState(false);
-  const [phoneVerified, setPhoneVerified] = useState(false);
-  const [confirmationResult, setConfirmationResult] = useState(null);
-  const [idToken, setIdToken] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [resendCountdown, setResendCountdown] = useState(0);
-
-  useEffect(() => {
-    let timer;
-    if (resendCountdown > 0) {
-      timer = setTimeout(() => setResendCountdown(resendCountdown - 1), 1000);
-    }
-    return () => clearTimeout(timer);
-  }, [resendCountdown]);
-
-  const setupRecaptcha = async () => {
-    if (window.recaptchaVerifier) {
-      try {
-        window.recaptchaVerifier.clear();
-      } catch (error) {
-        console.warn("Failed to clear old reCAPTCHA", error);
-      }
-      window.recaptchaVerifier = null;
-    }
-  
-    window.recaptchaVerifier = new RecaptchaVerifier(
-      auth,
-      "recaptcha-container",
-      {
-        size: "invisible",
-        callback: () => {
-          console.log("reCAPTCHA verified");
-        },
-        "expired-callback": () => {
-          console.warn("reCAPTCHA expired");
-        }
-      }
-    );
-  
-    await window.recaptchaVerifier.render();
-    return window.recaptchaVerifier;
-  };
-  
-  // Step 2 & 3 State
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     password: '',
+    phone: '',
     serviceCategory: '',
     skills: '',
     experience: '',
@@ -114,81 +67,33 @@ const WorkerRegister = () => {
     }
   };
 
-  const handleSendOtp = async () => {
-    const normalizedPhone = phone.replace(/\D/g, '').slice(-10);
-    if (normalizedPhone.length !== 10) return toast.error('Please enter a valid 10-digit phone number');
-    setIsLoading(true);
-    try {
-      const appVerifier = await setupRecaptcha();
-      const formattedPhone = '+91' + normalizedPhone;
-      const confirmation = await signInWithPhoneNumber(auth, formattedPhone, appVerifier);
-      setConfirmationResult(confirmation);
-      setOtpSent(true);
-      toast.success('OTP Sent Successfully');
-      setResendCountdown(60);
-    } catch (err) {
-      console.error("Firebase OTP error:", err?.code, err?.message, err);
-      toast.error(`Error: ${err?.code || 'Failed to send OTP'} - ${err?.message}`);
-      if (window.recaptchaVerifier) {
-          try { window.recaptchaVerifier.clear(); } catch(e) {}
-          window.recaptchaVerifier = null;
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleVerifyOtp = async () => {
-    if (otp.length !== 6) return toast.error('Please enter a valid 6-digit OTP');
-    if (!confirmationResult) return toast.error('Please request OTP first');
-    setIsLoading(true);
-    try {
-      const result = await confirmationResult.confirm(otp);
-      const token = await result.user.getIdToken();
-      setIdToken(token);
-      setPhoneVerified(true);
-      toast.success('Phone verified successfully');
-      setStep(2);
-    } catch (err) {
-      console.error("Firebase Verification error:", err?.code, err?.message, err);
-      if (err.code === 'auth/invalid-verification-code') {
-          toast.error('Invalid OTP');
-      } else if (err.code === 'auth/code-expired') {
-          toast.error('OTP expired. Please request a new one.');
-      } else {
-          toast.error(err.message || 'Invalid OTP');
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleNextToStep3 = (e) => {
+  const handleNextToStep2 = (e) => {
     e.preventDefault();
-    if (!formData.serviceCategory || !formData.city || !formData.expectedCharge) {
+    if (!formData.name || !formData.email || !formData.password || !formData.serviceCategory || !formData.city || !formData.expectedCharge) {
       return toast.error('Please fill all mandatory fields');
     }
-    setStep(3);
+    setStep(2);
   };
 
   const handleRegister = async (e) => {
     e.preventDefault();
-    if (!phoneVerified) return toast.error('Please verify your phone number first');
     if (!formData.profilePhotoUrl || !formData.idDocumentUrl) {
       return toast.error('Please upload required verification documents');
     }
 
     setIsLoading(true);
     try {
-      const normalizedPhone = phone.replace(/\D/g, '').slice(-10);
       const payload = {
         role: 'worker',
-        idToken,
         ...formData,
         services: [formData.serviceCategory],
         verificationStatus: 'Pending Verification',
         submittedAt: new Date()
       };
+      if (payload.phone) {
+          payload.phone = payload.phone.replace(/\D/g, '').slice(-10);
+      }
+      
       const res = await api.post('/auth/register', payload);
       login(res.data.user, res.data.token);
       toast.success('Worker profile submitted for verification');
@@ -214,82 +119,29 @@ const WorkerRegister = () => {
           <div className={`flex items-center justify-center w-8 h-8 rounded-full font-bold ${step >= 1 ? 'bg-primary text-white' : 'bg-gray-200 text-gray-500'}`}>1</div>
           <div className={`h-1 w-8 md:w-16 ${step >= 2 ? 'bg-primary' : 'bg-gray-200'}`}></div>
           <div className={`flex items-center justify-center w-8 h-8 rounded-full font-bold ${step >= 2 ? 'bg-primary text-white' : 'bg-gray-200 text-gray-500'}`}>2</div>
-          <div className={`h-1 w-8 md:w-16 ${step >= 3 ? 'bg-primary' : 'bg-gray-200'}`}></div>
-          <div className={`flex items-center justify-center w-8 h-8 rounded-full font-bold ${step >= 3 ? 'bg-primary text-white' : 'bg-gray-200 text-gray-500'}`}>3</div>
         </div>
 
         {step === 1 && (
-          <div className="space-y-5 max-w-md mx-auto">
-            <h2 className="text-xl font-bold text-navy text-center mb-4">Verify your phone number</h2>
-            <div className="relative">
-              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-border-gray" size={20} />
-              <input aria-label="10-digit Phone Number" 
-                type="tel" 
-                maxLength="10"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
-                disabled={otpSent}
-                placeholder="10-digit Phone Number" 
-                className="w-full pl-10 pr-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500 focus:outline-none disabled:bg-gray-100" 
-              />
-            </div>
-
-            {!otpSent ? (
-              <button disabled={isLoading} onClick={handleSendOtp} className="w-full bg-bg-soft-blue text-primary font-bold text-lg py-3 rounded-xl hover:bg-blue-100 transition-all disabled:opacity-50">
-                {isLoading ? 'Sending...' : 'Send OTP'}
-              </button>
-            ) : (
-              <>
-                <div className="relative">
-                  <ShieldCheck className="absolute left-3 top-1/2 -translate-y-1/2 text-border-gray" size={20} />
-                  <input aria-label="Enter 6-digit OTP" 
-                    type="text" 
-                    maxLength="6"
-                    value={otp}
-                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                    placeholder="Enter 6-digit OTP" 
-                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500 focus:outline-none text-center tracking-widest text-lg font-bold" 
-                  />
-                </div>
-                <button disabled={isLoading} onClick={handleVerifyOtp} className="w-full bg-primary text-white font-bold text-lg py-3 rounded-xl shadow-md hover:bg-primary-hover transition-all disabled:opacity-50">
-                  {isLoading ? 'Verifying...' : 'Verify & Continue'}
-                </button>
-                <div className="text-center mt-2">
-                  <button 
-                    disabled={resendCountdown > 0 || isLoading} 
-                    onClick={handleSendOtp} 
-                    className={`text-sm font-medium ${resendCountdown > 0 || isLoading ? 'text-gray-400' : 'text-text-gray hover:text-primary'}`}
-                  >
-                    {resendCountdown > 0 ? `Resend OTP in ${resendCountdown}s` : 'Resend OTP'}
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        )}
-
-        {step === 2 && (
-          <form onSubmit={handleNextToStep3} className="space-y-6">
+          <form onSubmit={handleNextToStep2} className="space-y-6">
             <div className="grid md:grid-cols-2 gap-6">
               <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 text-border-gray" size={20} />
                 <input aria-label="Full Name" type="text" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="Full Name" className="w-full pl-10 pr-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500 focus:outline-none" />
               </div>
               <div className="relative">
-                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-primary" size={20} />
-                <input aria-label="Verified phone number" type="tel" value={phone} readOnly className="w-full pl-10 pr-4 py-3 rounded-xl border border-green-200 bg-green-50 text-navy font-bold focus:outline-none" />
-                <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 text-green-500" size={20} />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-border-gray" size={20} />
+                <input aria-label="Email Address" type="email" required value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} placeholder="Email Address" className="w-full pl-10 pr-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500 focus:outline-none" />
               </div>
             </div>
 
             <div className="grid md:grid-cols-2 gap-6">
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-border-gray" size={20} />
-                <input aria-label="Email (Optional)" type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} placeholder="Email (Optional)" className="w-full pl-10 pr-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500 focus:outline-none" />
-              </div>
-              <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-border-gray" size={20} />
                 <input aria-label="Create Password" type="password" required minLength="6" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} placeholder="Create Password" className="w-full pl-10 pr-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+              </div>
+              <div className="relative">
+                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-border-gray" size={20} />
+                <input aria-label="Phone Number" type="tel" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value.replace(/\D/g, '')})} placeholder="Phone Number (Optional)" className="w-full pl-10 pr-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-blue-500 focus:outline-none" />
               </div>
             </div>
 
@@ -363,7 +215,7 @@ const WorkerRegister = () => {
           </form>
         )}
 
-        {step === 3 && (
+        {step === 2 && (
           <form onSubmit={handleRegister} className="space-y-6">
             <h2 className="text-xl font-bold text-navy mb-4">Verification Details</h2>
             
@@ -410,17 +262,16 @@ const WorkerRegister = () => {
               </div>
             </div>
 
-            <button disabled={isLoading || !phoneVerified} type="submit" className="w-full bg-orange-500 text-white font-bold text-lg py-4 rounded-xl shadow-lg hover:bg-orange-600 transition-all mt-8 disabled:opacity-50 disabled:cursor-not-allowed">
+            <button disabled={isLoading} type="submit" className="w-full bg-orange-500 text-white font-bold text-lg py-4 rounded-xl shadow-lg hover:bg-orange-600 transition-all mt-8 disabled:opacity-50 disabled:cursor-not-allowed">
               {isLoading ? 'Submitting...' : 'Submit for Verification'}
             </button>
             <div className="text-center mt-4">
-              <button type="button" onClick={() => setStep(2)} className="text-text-gray font-medium hover:text-primary">
+              <button type="button" onClick={() => setStep(1)} className="text-text-gray font-medium hover:text-primary">
                 Back to Profile
               </button>
             </div>
           </form>
         )}
-        <div id="recaptcha-container"></div>
       </div>
       </div>
     </div>
