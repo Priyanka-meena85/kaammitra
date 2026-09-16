@@ -62,7 +62,28 @@ import Chat from './pages/Chat';
 import CallbackRequest from './pages/CallbackRequest';
 import Pricing from './pages/Pricing';
 import WorkerOnboarding from './pages/WorkerOnboarding';
-import CustomerDashboard from './pages/CustomerDashboard';
+import CustomerHome from './pages/customer/CustomerHome';
+import CustomerNotifications from './pages/customer/CustomerNotifications';
+import CustomerSearch from './pages/customer/CustomerSearch';
+import CustomerCategories from './pages/customer/CustomerCategories';
+import CustomerVoiceSearch from './pages/customer/CustomerVoiceSearch';
+import CustomerWorkerResults from './pages/customer/CustomerWorkerResults';
+import CustomerWorkerProfile from './pages/customer/CustomerWorkerProfile';
+import CustomerBooking from './pages/customer/CustomerBooking';
+import CustomerBookingConfirmation from './pages/customer/CustomerBookingConfirmation';
+import CustomerBookingDetails from './pages/customer/CustomerBookingDetails';
+import CustomerBookings from './pages/customer/CustomerBookings';
+import CustomerReviewWorker from './pages/customer/CustomerReviewWorker';
+import CustomerMessages from './pages/customer/CustomerMessages';
+import CustomerChat from './pages/customer/CustomerChat';
+import CustomerProfile from './pages/customer/CustomerProfile';
+import CustomerPersonalInfo from './pages/customer/CustomerPersonalInfo';
+import CustomerTrustedWorkers from './pages/customer/CustomerTrustedWorkers';
+import CustomerSavedAddresses from './pages/customer/CustomerSavedAddresses';
+import CustomerMyReviews from './pages/customer/CustomerMyReviews';
+import CustomerHelpSupport from './pages/customer/CustomerHelpSupport';
+import CustomerSettings from './pages/customer/CustomerSettings';
+
 import WorkerDashboard from './pages/WorkerDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminAnalytics from './pages/admin/AdminAnalytics';
@@ -92,7 +113,7 @@ const AuthInterceptor = () => {
         else if (user.role === 'worker') navigate('/worker/notifications', { replace: true });
         else if (user.role === 'admin') navigate('/admin/notifications', { replace: true });
       } else {
-        if (user.role === 'customer') navigate('/customer/dashboard', { replace: true });
+        if (user.role === 'customer') navigate('/customer', { replace: true });
         else if (user.role === 'worker') navigate('/worker/dashboard', { replace: true });
         else if (user.role === 'admin') navigate('/admin', { replace: true });
       }
@@ -154,13 +175,32 @@ function App() {
 
           {/* Consumer App */}
           <Route path="/customer" element={<ProtectedRoute roleRequired="customer"><CustomerLayout /></ProtectedRoute>}>
-            <Route path="dashboard" element={<CustomerDashboard />} />
-            <Route path="booking" element={<BookingForm />} />
-            <Route path="booking/:workerId" element={<BookingForm />} />
-            <Route path="bookings" element={<MyBookings />} />
-            <Route path="chat/:workerId" element={<Chat />} />
-            <Route path="notifications" element={<Notifications />} />
-            <Route path="notification-settings" element={<NotificationSettings />} />
+            <Route index element={<CustomerHome />} />
+            <Route path="notifications" element={<CustomerNotifications />} />
+            
+            <Route path="search" element={<CustomerSearch />} />
+            <Route path="search/categories" element={<CustomerCategories />} />
+            <Route path="search/voice" element={<CustomerVoiceSearch />} />
+            <Route path="search/results" element={<CustomerWorkerResults />} />
+            <Route path="search/worker/:workerId" element={<CustomerWorkerProfile />} />
+            
+            <Route path="booking/new/:workerId" element={<CustomerBooking />} />
+            <Route path="booking/confirm" element={<CustomerBookingConfirmation />} />
+            
+            <Route path="bookings" element={<CustomerBookings />} />
+            <Route path="bookings/:bookingId" element={<CustomerBookingDetails />} />
+            <Route path="bookings/:bookingId/review" element={<CustomerReviewWorker />} />
+            
+            <Route path="messages" element={<CustomerMessages />} />
+            <Route path="messages/:conversationId" element={<CustomerChat />} />
+            
+            <Route path="profile" element={<CustomerProfile />} />
+            <Route path="profile/personal" element={<CustomerPersonalInfo />} />
+            <Route path="profile/trusted-workers" element={<CustomerTrustedWorkers />} />
+            <Route path="profile/addresses" element={<CustomerSavedAddresses />} />
+            <Route path="profile/reviews" element={<CustomerMyReviews />} />
+            <Route path="profile/help" element={<CustomerHelpSupport />} />
+            <Route path="profile/settings" element={<CustomerSettings />} />
           </Route>
 
           {/* Worker App */}
