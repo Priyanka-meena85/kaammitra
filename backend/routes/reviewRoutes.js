@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
-const { protect, authorize } = require('../middlewares/auth');
+const { protect } = require('../middlewares/auth');
+const { requireRole, requirePermission } = require('../middlewares/rbac');
 const Review = require('../models/Review');
 const Booking = require('../models/Booking');
 const Worker = require('../models/Worker');
@@ -13,7 +14,7 @@ const { evaluateUserRisk } = require('../services/fraudDetectionService');
 const { createAuditLog } = require('../services/auditService');
 
 // Create Review
-router.post('/', protect, async (req, res) => {
+router.post('/', protect, requirePermission('review.create'), async (req, res) => {
     try {
         const { bookingId, rating, title, comment, tags, photos } = req.body;
         
@@ -175,7 +176,7 @@ router.patch('/:id/report', protect, async (req, res) => {
 });
 
 // Admin: Get all reviews
-router.get('/admin/all', protect, authorize('admin'), async (req, res) => {
+router.get('/admin/all', protect, requirePermission('reviews.moderate'), async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 20;
@@ -201,7 +202,7 @@ router.get('/admin/all', protect, authorize('admin'), async (req, res) => {
 });
 
 // Admin: Moderate review
-router.patch('/admin/:id/moderate', protect, authorize('admin'), async (req, res) => {
+router.patch('/admin/:id/moderate', protect, requirePermission('reviews.moderate'), async (req, res) => {
     try {
         const { status, moderationNote } = req.body;
         const review = await Review.findById(req.params.id);

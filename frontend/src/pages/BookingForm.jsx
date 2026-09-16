@@ -168,7 +168,7 @@ const BookingForm = () => {
 
   const handlePayment = async (paymentType) => {
     if (paymentType === 'cash') {
-      navigate('/my-bookings');
+      navigate('/customer/bookings');
       return;
     }
 
@@ -203,7 +203,7 @@ const BookingForm = () => {
               razorpay_signature: response.razorpay_signature
             });
             toast.success('Payment successful!');
-            navigate('/my-bookings');
+            navigate('/customer/bookings');
           } catch (err) {
             toast.error('Payment verification failed.');
           }

@@ -21,7 +21,7 @@ const Login = () => {
       const res = await api.post('/auth/login', { email, password, role });
       login(res.data.user, res.data.token);
       toast.success('Login successful!');
-      navigate(res.data.user.role === 'worker' ? '/worker-dashboard' : (res.data.user.role === 'admin' ? '/admin' : '/customer-dashboard'));
+      navigate(res.data.user.role === 'worker' ? '/worker/dashboard' : (res.data.user.role === 'admin' ? '/admin' : '/customer/dashboard'));
     } catch (err) {
       if (!err.isWakingUp) toast.error(err.response?.data?.error || err.response?.data?.message || 'Invalid credentials');
     } finally {
@@ -42,10 +42,20 @@ const Login = () => {
         </div>
 
         {/* Role Selection */}
-        <div className="flex bg-gray-100 p-1 rounded-xl mb-6">
-          <button onClick={() => setRole('customer')} className={`flex-1 py-2 text-sm font-bold rounded-lg transition-colors ${role === 'customer' ? 'bg-white shadow-sm text-primary' : 'text-text-gray'}`}>Customer</button>
-          <button onClick={() => setRole('worker')} className={`flex-1 py-2 text-sm font-bold rounded-lg transition-colors ${role === 'worker' ? 'bg-white shadow-sm text-primary' : 'text-text-gray'}`}>Worker</button>
-          <button onClick={() => setRole('admin')} className={`flex-1 py-2 text-sm font-bold rounded-lg transition-colors ${role === 'admin' ? 'bg-white shadow-sm text-primary' : 'text-text-gray'}`}>Admin</button>
+        <div className="mb-6 relative">
+          <label className="block text-sm font-bold text-navy mb-2">Select Account Type</label>
+          <select 
+            value={role} 
+            onChange={(e) => setRole(e.target.value)} 
+            className="w-full bg-gray-50 border border-border-gray text-navy text-sm font-bold rounded-xl focus:ring-2 focus:ring-primary focus:border-primary block p-3 appearance-none"
+          >
+            <option value="customer">Customer</option>
+            <option value="worker">Worker</option>
+            <option value="admin">Admin</option>
+          </select>
+          <div className="pointer-events-none absolute inset-y-0 right-0 top-7 flex items-center px-4 text-text-gray">
+            <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+          </div>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-5">

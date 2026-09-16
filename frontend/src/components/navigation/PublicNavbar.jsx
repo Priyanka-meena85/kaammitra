@@ -1,12 +1,9 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, User, Languages, LogOut , Wallet } from 'lucide-react';
-import SimpleModeToggle from './SimpleModeToggle';
-import { useAuth } from '../context/AuthContext';
-import NotificationBell from './NotificationBell';
+import { Menu, X, User, Languages } from 'lucide-react';
+import SimpleModeToggle from '../SimpleModeToggle';
 
-const Navbar = () => {
-  const { user, logout } = useAuth();
+const PublicNavbar = () => {
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [lang, setLang] = useState('en');
@@ -39,34 +36,13 @@ const Navbar = () => {
             </button>
             
             <div className="flex items-center space-x-4">
-              {user ? (
-                <>
-                  <NotificationBell />
-                  <Link to={user.role === 'customer' ? '/customer-dashboard' : user.role === 'worker' ? '/worker-dashboard' : '/admin'} className="text-text-gray hover:text-primary font-medium flex items-center gap-1">
-                    <User size={18} />
-                    {lang === 'hi' ? 'डैशबोर्ड' : 'Dashboard'}
-                  </Link>
-                  {user.role === 'worker' && (
-                    <Link to="/wallet" className="text-text-gray hover:text-primary font-medium flex items-center gap-1">
-                      <Wallet size={18} />
-                      {lang === 'hi' ? 'कमाई' : 'Earnings'}
-                    </Link>
-                  )}
-                  <button onClick={logout} className="text-text-gray hover:text-red-500 font-medium flex items-center gap-1">
-                    <LogOut size={18} />
-                  </button>
-                </>
-              ) : (
-                <>
-                  <Link to="/login" className="text-text-gray hover:text-primary font-medium flex items-center gap-1">
-                    <User size={18} />
-                    {lang === 'hi' ? 'लॉगिन' : 'Login'}
-                  </Link>
-                  <Link to="/register" className="bg-orange-500 text-white px-4 py-2 rounded-full font-medium hover:bg-orange-600 transition shadow-md">
-                    {lang === 'hi' ? 'रजिस्टर' : 'Register'}
-                  </Link>
-                </>
-              )}
+              <Link to="/login" className="text-text-gray hover:text-primary font-medium flex items-center gap-1">
+                <User size={18} />
+                {lang === 'hi' ? 'लॉगिन' : 'Login'}
+              </Link>
+              <Link to="/register" className="bg-orange-500 text-white px-4 py-2 rounded-full font-medium hover:bg-orange-600 transition shadow-md">
+                {lang === 'hi' ? 'रजिस्टर' : 'Register'}
+              </Link>
             </div>
           </div>
 
@@ -91,26 +67,8 @@ const Navbar = () => {
             <Link to="/services" onClick={() => setIsOpen(false)} className="block px-3 py-3 text-text-gray font-medium hover:bg-bg-warm rounded-md">Services</Link>
             <Link to="/how-it-works" onClick={() => setIsOpen(false)} className="block px-3 py-3 text-text-gray font-medium hover:bg-bg-warm rounded-md">How it Works</Link>
             <Link to="/worker-onboarding" onClick={() => setIsOpen(false)} className="block px-3 py-3 text-text-gray font-medium hover:bg-bg-warm rounded-md">Become Worker</Link>
-            {user ? (
-              <>
-                <div className="px-3 py-2 flex items-center">
-                  <NotificationBell />
-                </div>
-                <Link to={user.role === 'customer' ? '/customer-dashboard' : user.role === 'worker' ? '/worker-dashboard' : '/admin'} onClick={() => setIsOpen(false)} className="block px-3 py-2 text-text-gray font-medium hover:bg-bg-warm rounded-md">Dashboard</Link>
-                {user.role === 'customer' && (
-                  <Link to="/my-bookings" onClick={() => setIsOpen(false)} className="block px-3 py-2 text-text-gray font-medium hover:bg-bg-warm rounded-md">My Bookings</Link>
-                )}
-                {user.role === 'worker' && (
-                  <Link to="/wallet" onClick={() => setIsOpen(false)} className="block px-3 py-2 text-text-gray font-medium hover:bg-bg-warm rounded-md">Earnings &amp; Payouts</Link>
-                )}
-                <button onClick={() => { logout(); setIsOpen(false); }} className="block w-full text-left px-3 py-2 text-red-500 font-medium hover:bg-bg-warm rounded-md">Logout</button>
-              </>
-            ) : (
-              <>
-                <Link to="/login" onClick={() => setIsOpen(false)} className="block px-3 py-2 text-text-gray font-medium hover:bg-bg-warm rounded-md">Login</Link>
-                <Link to="/register" onClick={() => setIsOpen(false)} className="block px-3 py-2 text-orange-500 font-medium hover:bg-bg-warm rounded-md">Register</Link>
-              </>
-            )}
+            <Link to="/login" onClick={() => setIsOpen(false)} className="block px-3 py-2 text-text-gray font-medium hover:bg-bg-warm rounded-md">Login</Link>
+            <Link to="/register" onClick={() => setIsOpen(false)} className="block px-3 py-2 text-orange-500 font-medium hover:bg-bg-warm rounded-md">Register</Link>
           </div>
         </div>
       )}
@@ -118,4 +76,4 @@ const Navbar = () => {
   );
 };
 
-export default Navbar;
+export default PublicNavbar;

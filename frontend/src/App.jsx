@@ -1,12 +1,16 @@
 import React, { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
-import Navbar from './components/Navbar';
-import Footer from './components/Footer';
 import InstallAppPrompt from './components/InstallAppPrompt';
 import { useAuth } from './context/AuthContext';
 import { useSocket } from './context/SocketContext';
 import toast from 'react-hot-toast';
+
+// Layouts
+import PublicLayout from './layouts/PublicLayout';
+import CustomerLayout from './layouts/CustomerLayout';
+import WorkerLayout from './layouts/WorkerLayout';
+import AdminLayout from './layouts/AdminLayout';
 
 // Live Booking Toasts Component
 const LiveBookingToasts = () => {
@@ -17,8 +21,6 @@ const LiveBookingToasts = () => {
     if (!socket) return;
 
     socket.on('booking_status_updated', ({ status }) => {
-      // react-hot-toast has no `toast.info` — calling it threw a TypeError on
-      // every worker update and on Rejected/Cancelled/In Progress for customers.
       if (user?.role === 'customer') {
         if (status === 'Accepted') toast.success('Your booking was accepted!');
         else if (status === 'On the Way') toast.success('Worker is on the way!');
@@ -76,10 +78,26 @@ import { Terms, Privacy, Refunds } from './pages/Legal';
 import ProtectedRoute from './components/ProtectedRoute';
 import { Toaster } from 'react-hot-toast';
 
-// AuthInterceptor component to handle navigation
+// AuthInterceptor component to handle session expiry and role-based root redirection
 const AuthInterceptor = () => {
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const location = useLocation();
+  const { logout, user } = useAuth();
+
+  useEffect(() => {
+    // If logged in and at a public auth or root path, redirect to their specific app dashboard
+    if (user && ['/', '/login', '/register', '/worker-register', '/notifications'].includes(location.pathname)) {
+      if (location.pathname === '/notifications') {
+        if (user.role === 'customer') navigate('/customer/notifications', { replace: true });
+        else if (user.role === 'worker') navigate('/worker/notifications', { replace: true });
+        else if (user.role === 'admin') navigate('/admin/notifications', { replace: true });
+      } else {
+        if (user.role === 'customer') navigate('/customer/dashboard', { replace: true });
+        else if (user.role === 'worker') navigate('/worker/dashboard', { replace: true });
+        else if (user.role === 'admin') navigate('/admin', { replace: true });
+      }
+    }
+  }, [user, location.pathname, navigate]);
 
   useEffect(() => {
     const handleUnauthorized = () => {
@@ -104,63 +122,69 @@ function App() {
         <AuthInterceptor />
         <LiveBookingToasts />
         <InstallAppPrompt />
-        <div className="flex flex-col min-h-screen bg-bg-warm">
-          <Toaster position="top-center" />
-          <Navbar />
-          <main className="flex-grow">
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/services" element={<Services />} />
-              <Route path="/how-it-works" element={<HowItWorks />} />
-              
-              {/* Auth */}
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-              <Route path="/worker-register" element={<WorkerRegister />} />
-              <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Toaster position="top-center" />
+        
+        <Routes>
+          {/* Public App */}
+          <Route element={<PublicLayout />}>
+            <Route path="/" element={<Home />} />
+            <Route path="/services" element={<Services />} />
+            <Route path="/how-it-works" element={<HowItWorks />} />
+            
+            {/* Auth */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/worker-register" element={<WorkerRegister />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
 
-              {/* Legal */}
-              <Route path="/terms" element={<Terms />} />
-              <Route path="/privacy" element={<Privacy />} />
-              <Route path="/refund-policy" element={<Refunds />} />
-              
-              {/* Workers & Booking */}
-              <Route path="/workers" element={<Workers />} />
-              <Route path="/worker/:id" element={<WorkerProfile />} />
-              <Route path="/emergency" element={<Emergency />} />
-              <Route path="/area-launch" element={<AreaLaunch />} />
-              <Route path="/callback-request" element={<CallbackRequest />} />
-              <Route path="/pricing" element={<Pricing />} />
-              {/* Public on purpose: this is the worker recruitment funnel. */}
-              <Route path="/worker-onboarding" element={<WorkerOnboarding />} />
+            {/* Legal */}
+            <Route path="/terms" element={<Terms />} />
+            <Route path="/privacy" element={<Privacy />} />
+            <Route path="/refund-policy" element={<Refunds />} />
+            
+            {/* Workers & Booking (Public facing discovery) */}
+            <Route path="/workers" element={<Workers />} />
+            <Route path="/worker/:id" element={<WorkerProfile />} />
+            <Route path="/emergency" element={<Emergency />} />
+            <Route path="/area-launch" element={<AreaLaunch />} />
+            <Route path="/callback-request" element={<CallbackRequest />} />
+            <Route path="/pricing" element={<Pricing />} />
+            <Route path="/worker-onboarding" element={<WorkerOnboarding />} />
+          </Route>
 
-              {/* Customer — signed in */}
-              <Route path="/booking" element={<ProtectedRoute roleRequired="customer"><BookingForm /></ProtectedRoute>} />
-              <Route path="/booking/:workerId" element={<ProtectedRoute roleRequired="customer"><BookingForm /></ProtectedRoute>} />
-              <Route path="/my-bookings" element={<ProtectedRoute roleRequired="customer"><MyBookings /></ProtectedRoute>} />
-              <Route path="/customer-dashboard" element={<ProtectedRoute roleRequired="customer"><CustomerDashboard /></ProtectedRoute>} />
+          {/* Consumer App */}
+          <Route path="/customer" element={<ProtectedRoute roleRequired="customer"><CustomerLayout /></ProtectedRoute>}>
+            <Route path="dashboard" element={<CustomerDashboard />} />
+            <Route path="booking" element={<BookingForm />} />
+            <Route path="booking/:workerId" element={<BookingForm />} />
+            <Route path="bookings" element={<MyBookings />} />
+            <Route path="chat/:workerId" element={<Chat />} />
+            <Route path="notifications" element={<Notifications />} />
+            <Route path="notification-settings" element={<NotificationSettings />} />
+          </Route>
 
-              {/* Worker — signed in */}
-              <Route path="/worker-dashboard" element={<ProtectedRoute roleRequired="worker"><WorkerDashboard /></ProtectedRoute>} />
-              <Route path="/wallet" element={<ProtectedRoute roleRequired="worker"><WorkerWallet /></ProtectedRoute>} />
+          {/* Worker App */}
+          <Route path="/worker" element={<ProtectedRoute roleRequired="worker"><WorkerLayout /></ProtectedRoute>}>
+            <Route path="dashboard" element={<WorkerDashboard />} />
+            <Route path="wallet" element={<WorkerWallet />} />
+            <Route path="chat/:workerId" element={<Chat />} />
+            <Route path="notifications" element={<Notifications />} />
+            <Route path="notification-settings" element={<NotificationSettings />} />
+          </Route>
 
-              {/* Any signed-in user */}
-              <Route path="/chat/:workerId" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
-              <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
-              <Route path="/notification-settings" element={<ProtectedRoute><NotificationSettings /></ProtectedRoute>} />
+          {/* Admin App */}
+          <Route path="/admin" element={<ProtectedRoute roleRequired="admin"><AdminLayout /></ProtectedRoute>}>
+            <Route index element={<AdminDashboard />} />
+            <Route path="analytics" element={<AdminAnalytics />} />
+            <Route path="reports" element={<AdminReports />} />
+            <Route path="audit-logs" element={<AdminAuditLogs />} />
+            <Route path="trust-safety" element={<AdminTrustSafety />} />
+            <Route path="notifications" element={<Notifications />} />
+            <Route path="notification-settings" element={<NotificationSettings />} />
+          </Route>
 
-              {/* Admin */}
-              <Route path="/admin" element={<ProtectedRoute roleRequired="admin"><AdminDashboard /></ProtectedRoute>} />
-              <Route path="/admin/analytics" element={<ProtectedRoute roleRequired="admin"><AdminAnalytics /></ProtectedRoute>} />
-              <Route path="/admin/reports" element={<ProtectedRoute roleRequired="admin"><AdminReports /></ProtectedRoute>} />
-              <Route path="/admin/audit-logs" element={<ProtectedRoute roleRequired="admin"><AdminAuditLogs /></ProtectedRoute>} />
-              <Route path="/admin/trust-safety" element={<ProtectedRoute roleRequired="admin"><AdminTrustSafety /></ProtectedRoute>} />
-
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </main>
-          <Footer />
-        </div>
+          <Route path="*" element={<NotFound />} />
+        </Routes>
       </Router>
     </HelmetProvider>
   );

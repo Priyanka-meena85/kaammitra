@@ -1,14 +1,16 @@
 const express = require('express');
 const router = express.Router();
 const AuditLog = require('../models/AuditLog');
-const { protect, authorize } = require('../middlewares/auth');
+const { protect } = require('../middlewares/auth');
+const { requireRole, requirePermission } = require('../middlewares/rbac');
 const { buildDateFilter } = require('../utils/dateRange');
 const { createAuditLog } = require('../services/auditService');
 const mongoose = require('mongoose');
 
 // Admin only routes
 router.use(protect);
-router.use(authorize('admin'));
+router.use(requireRole('admin'));
+router.use(requirePermission('audit.read'));
 
 // Middleware to log admin accessing audit logs
 router.use(async (req, res, next) => {

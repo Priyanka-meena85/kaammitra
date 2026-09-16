@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const { stringify } = require('csv-stringify');
-const { protect, authorize } = require('../middlewares/auth');
+const { protect } = require('../middlewares/auth');
+const { requireRole, requirePermission } = require('../middlewares/rbac');
 const { getDateRange, buildDateFilter } = require('../utils/dateRange');
 const { maskPhone, maskUPI, maskBankAccount } = require('../utils/analyticsHelpers');
 const { createAuditLog } = require('../services/auditService');
@@ -16,7 +17,8 @@ const AuditLog = require('../models/AuditLog');
 
 // Admin only routes
 router.use(protect);
-router.use(authorize('admin'));
+router.use(requireRole('admin'));
+router.use(requirePermission('platform.manage'));
 
 // Helper to log exports
 const logExport = async (req, type) => {
@@ -80,7 +82,7 @@ router.get('/bookings.csv', async (req, res) => {
       b.workerId?.name || 'Unassigned',
       b.city,
       b.area,
-      b.totalPrice || 0
+      b.totalAmount || 0
     ]);
   } catch (err) {
     res.status(400).send(err.message);
@@ -161,8 +163,8 @@ router.get('/payments.csv', async (req, res) => {
       p.createdAt.toISOString(),
       p.status,
       p.amount,
-      p.platformFee,
-      p.workerAmount,
+      p.platformCommissionAmount,
+      p.workerEarningAmount,
       p.customerId?.name || 'N/A',
       p.workerId?.name || 'N/A',
       p.razorpayOrderId || 'N/A'
@@ -194,9 +196,9 @@ router.get('/payouts.csv', async (req, res) => {
       maskPhone(p.workerId?.phone),
       p.amount,
       p.bankDetailsSnapshot?.accountHolderName || 'N/A',
-      maskBankAccount(p.bankDetailsSnapshot?.accountNumber),
-      p.bankDetailsSnapshot?.ifsc || 'N/A',
-      maskUPI(p.bankDetailsSnapshot?.upiId),
+      p.bankDetailsSnapshot?.accountNumberMasked || 'N/A',
+      p.bankDetailsSnapshot?.ifscMasked || 'N/A',
+      p.bankDetailsSnapshot?.upiIdMasked || 'N/A',
       p.transactionReference || ''
     ]);
   } catch (err) {
@@ -223,7 +225,7 @@ router.get('/complaints.csv', async (req, res) => {
       c._id.toString(),
       c.createdAt.toISOString(),
       c.status,
-      c.complaintType,
+      c.reason,
       c.customerId?.name || 'N/A',
       c.workerId?.name || 'N/A',
       c.description,

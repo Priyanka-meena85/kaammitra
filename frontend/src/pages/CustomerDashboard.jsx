@@ -71,7 +71,7 @@ const CustomerDashboard = () => {
         </div>
         
         <div 
-          onClick={() => navigate('/my-bookings')}
+          onClick={() => navigate('/customer/bookings')}
           className="bg-accent-green text-white p-6 rounded-2xl shadow-md hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer"
         >
           <List size={32} className="mb-4" />
@@ -89,7 +89,7 @@ const CustomerDashboard = () => {
         </div>
 
         <div 
-          onClick={() => navigate('/notifications')}
+          onClick={() => navigate('/customer/notifications')}
           className="bg-blue-500 text-white p-6 rounded-2xl shadow-md hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer"
         >
           <Bell size={32} className="mb-4" />

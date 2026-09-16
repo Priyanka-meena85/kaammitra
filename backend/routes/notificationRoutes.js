@@ -4,15 +4,7 @@ const Notification = require("../models/Notification");
 const NotificationPreference = require("../models/NotificationPreference");
 const PushSubscription = require("../models/PushSubscription");
 const { protect } = require("../middlewares/auth");
-
-// Utility to determine if user is admin
-const isAdmin = (req, res, next) => {
-  if (req.user && req.user.role === "admin") {
-    next();
-  } else {
-    res.status(403).json({ success: false, message: "Not authorized as admin" });
-  }
-};
+const { requireRole, requirePermission } = require("../middlewares/rbac");
 
 // GET /api/v1/notifications
 // Get user's notifications with pagination
@@ -189,8 +181,7 @@ router.delete("/push/unsubscribe", protect, async (req, res) => {
   }
 });
 
-// GET /api/v1/notifications/admin (admin logs)
-router.get("/admin", protect, isAdmin, async (req, res) => {
+router.get("/admin", protect, requireRole('admin'), async (req, res) => {
   try {
     const page = parseInt(req.query.page, 10) || 1;
     const limit = parseInt(req.query.limit, 10) || 20;

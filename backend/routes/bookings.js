@@ -6,16 +6,17 @@ const {
     updateBookingStatus, 
     suggestWorkers 
 } = require('../controllers/bookingsController');
-const { protect, authorize } = require('../middlewares/auth');
+const { protect } = require('../middlewares/auth');
+const { requireRole, requirePermission } = require('../middlewares/rbac');
 
 const router = express.Router();
 
 router.use(protect);
 
-router.get('/suggest-workers', authorize('customer'), suggestWorkers);
-router.post('/', authorize('customer'), createBooking);
-router.get('/customer/:customerId', authorize('customer', 'admin'), getCustomerBookings);
-router.get('/worker/:workerId', authorize('worker', 'admin'), getWorkerBookings);
-router.patch('/:id/status', authorize('customer', 'worker', 'admin'), updateBookingStatus);
+router.get('/suggest-workers', requirePermission('booking.create'), suggestWorkers);
+router.post('/', requirePermission('booking.create'), createBooking);
+router.get('/customer/:customerId', requireRole('customer', 'admin'), getCustomerBookings);
+router.get('/worker/:workerId', requireRole('worker', 'admin'), getWorkerBookings);
+router.patch('/:id/status', requirePermission('booking.status.update'), updateBookingStatus);
 
 module.exports = router;

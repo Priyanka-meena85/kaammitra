@@ -84,7 +84,7 @@ const ForgotPassword = () => {
       const res = await api.post('/auth/reset-password', { idToken, role, newPassword: password });
       login(res.data.user, res.data.token);
       toast.success('Password updated. You are signed in.');
-      navigate(res.data.user.role === 'worker' ? '/worker-dashboard' : '/customer-dashboard');
+      navigate(res.data.user.role === 'worker' ? '/worker/dashboard' : '/customer/dashboard');
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Could not reset password. Please try again.');
     } finally {

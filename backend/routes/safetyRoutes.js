@@ -1,13 +1,14 @@
 const express = require('express');
 const router = express.Router();
-const { protect, authorize } = require('../middlewares/auth');
+const { protect } = require('../middlewares/auth');
+const { requireRole, requirePermission } = require('../middlewares/rbac');
 const SafetyReport = require('../models/SafetyReport');
 const Worker = require('../models/Worker');
 const Customer = require('../models/Customer');
 const { createAuditLog } = require('../services/auditService');
 
 // Create Safety Report
-router.post('/report', protect, async (req, res) => {
+router.post('/report', protect, requirePermission('safety.report'), async (req, res) => {
     try {
         const { targetId, targetRole, bookingId, type, severity, description, evidence } = req.body;
         
@@ -60,7 +61,7 @@ router.post('/report', protect, async (req, res) => {
 });
 
 // Get My Reports
-router.get('/my-reports', protect, async (req, res) => {
+router.get('/my-reports', protect, requirePermission('safety.report'), async (req, res) => {
     try {
         const reports = await SafetyReport.find({ reporterId: req.user.id }).sort('-createdAt');
         res.json({ success: true, data: { reports } });
@@ -70,7 +71,7 @@ router.get('/my-reports', protect, async (req, res) => {
 });
 
 // Admin: Get all reports
-router.get('/admin/reports', protect, authorize('admin'), async (req, res) => {
+router.get('/admin/reports', protect, requirePermission('safety.manage'), async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 20;
@@ -94,7 +95,7 @@ router.get('/admin/reports', protect, authorize('admin'), async (req, res) => {
 });
 
 // Admin: Resolve report
-router.patch('/admin/reports/:id', protect, authorize('admin'), async (req, res) => {
+router.patch('/admin/reports/:id', protect, requirePermission('safety.manage'), async (req, res) => {
     try {
         const { status, adminNote, actionTaken } = req.body;
         const report = await SafetyReport.findById(req.params.id);

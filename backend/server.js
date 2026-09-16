@@ -12,7 +12,10 @@ if (!process.env.JWT_SECRET) {
 }
 
 // Connect to database
-connectDB();
+connectDB().then(() => {
+    // Bootstrap Admin if none exists
+    require('./scripts/seedAdmin')();
+});
 
 const http = require('http');
 const { Server } = require('socket.io');

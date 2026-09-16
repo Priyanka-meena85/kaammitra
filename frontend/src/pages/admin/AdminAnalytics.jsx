@@ -60,10 +60,8 @@ const AdminAnalytics = () => {
     }
 
     return (
-        <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <h1 className="text-2xl font-bold text-gray-800">Advanced Analytics</h1>
-                <div className="flex gap-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6 w-full">
+            <div className="flex justify-end mb-4">
                     <select aria-label="Filter by city" 
                         value={city} 
                         onChange={(e) => setCity(e.target.value)}

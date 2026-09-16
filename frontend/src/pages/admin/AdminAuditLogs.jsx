@@ -87,13 +87,7 @@ const AdminAuditLogs = () => {
     };
 
     return (
-        <div className="space-y-6">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-800">System Audit Logs</h1>
-                    <p className="text-gray-500 mt-1">Track all activities, access, and changes on the platform.</p>
-                </div>
-            </div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6 w-full">
 
             {/* Filters */}
             <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">

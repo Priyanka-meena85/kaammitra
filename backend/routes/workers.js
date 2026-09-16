@@ -11,7 +11,8 @@ const {
     emergencyMatchWorkers 
 } = require('../controllers/workerController');
 const cache = require('../middleware/cache');
-const { protect, authorize } = require('../middlewares/auth');
+const { protect } = require('../middlewares/auth');
+const { requireRole, requirePermission } = require('../middlewares/rbac');
 
 const router = express.Router();
 
@@ -23,10 +24,10 @@ router.route('/emergency-match').get(emergencyMatchWorkers);
 router.route('/').get(cache(300), getWorkers);
 router.route('/:id').get(getWorker);
 
-router.patch('/:id/availability', protect, authorize('worker'), updateAvailability);
-router.patch('/:id/working-hours', protect, authorize('worker'), updateWorkingHours);
-router.patch('/:id/verify', protect, authorize('admin'), verifyWorker);
-router.patch('/:id/block', protect, authorize('admin'), blockWorker);
-router.patch('/:id/unblock', protect, authorize('admin'), unblockWorker);
+router.patch('/:id/availability', protect, requirePermission('availability.manage.self'), updateAvailability);
+router.patch('/:id/working-hours', protect, requirePermission('availability.manage.self'), updateWorkingHours);
+router.patch('/:id/verify', protect, requirePermission('verification.manage'), verifyWorker);
+router.patch('/:id/block', protect, requirePermission('workers.manage'), blockWorker);
+router.patch('/:id/unblock', protect, requirePermission('workers.manage'), unblockWorker);
 
 module.exports = router;

@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { User, Phone, Mail, MapPin, Target, Briefcase, Wrench, IndianRupee, Image, FileText, Lock } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
+import { User, Phone, Mail, MapPin, Target, Briefcase, Wrench, IndianRupee, Image, FileText, Lock, ShieldCheck } from 'lucide-react';
 import { services } from '../data/services';
 import { useAuth } from '../context/AuthContext';
 import { getUserLocation } from '../utils/location';
@@ -11,6 +11,15 @@ const WorkerRegister = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
   const [step, setStep] = useState(1);
+  const [role, setRole] = useState('worker');
+  
+  const handleRoleChange = (newRole) => {
+    if (newRole === 'customer') {
+      navigate('/register');
+    } else {
+      setRole(newRole);
+    }
+  };
   
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -36,11 +45,25 @@ const WorkerRegister = () => {
 
   const handleLocation = async () => {
     try {
-      await getUserLocation();
-      setFormData(prev => ({ ...prev, address: 'Fetched from GPS Location' }));
+      const coords = await getUserLocation();
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.latitude}&lon=${coords.longitude}&addressdetails=1`);
+      const data = await res.json();
+      
+      const addressObj = data.address || {};
+      const fetchedCity = addressObj.city || addressObj.town || addressObj.village || addressObj.county || '';
+      const fetchedArea = addressObj.suburb || addressObj.neighbourhood || addressObj.residential || '';
+      const fullAddress = data.display_name || 'Fetched from GPS Location';
+
+      setFormData(prev => ({ 
+        ...prev, 
+        city: fetchedCity || prev.city,
+        area: fetchedArea || prev.area,
+        address: fullAddress 
+      }));
       toast.success('Location fetched successfully');
     } catch(e) {
-      toast.error('Location access denied');
+      console.error(e);
+      toast.error('Location access denied or failed to fetch address');
     }
   };
 
@@ -97,7 +120,7 @@ const WorkerRegister = () => {
       const res = await api.post('/auth/register', payload);
       login(res.data.user, res.data.token);
       toast.success('Worker profile submitted for verification');
-      navigate('/worker-dashboard');
+      navigate('/worker/dashboard');
     } catch(err) {
       toast.error(err.response?.data?.message || err.response?.data?.error || 'Registration failed');
     } finally {
@@ -110,8 +133,28 @@ const WorkerRegister = () => {
       <div className="max-w-2xl mx-auto">
       <div className="bg-card-white rounded-2xl shadow-xl border border-border-gray p-6 md:p-8">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-navy mb-2">Become a KaamMitra</h1>
-          <p className="text-text-gray">Register as a worker and start getting jobs near you.</p>
+          <div className="w-16 h-16 bg-bg-soft-blue text-primary rounded-full flex items-center justify-center mx-auto mb-4">
+            <ShieldCheck size={32} />
+          </div>
+          <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-primary mb-2">Your local service account</p>
+          <h1 className="text-3xl font-extrabold text-navy mb-2">Create an account</h1>
+          <p className="text-text-gray text-sm">Sign up to manage bookings and connect with your local network.</p>
+        </div>
+
+        {/* Role Selection */}
+        <div className="mb-6 relative">
+          <label className="block text-sm font-bold text-navy mb-2">Select Account Type</label>
+          <select 
+            value={role} 
+            onChange={(e) => handleRoleChange(e.target.value)} 
+            className="w-full bg-gray-50 border border-border-gray text-navy text-sm font-bold rounded-xl focus:ring-2 focus:ring-primary focus:border-primary block p-3 appearance-none"
+          >
+            <option value="customer">Customer</option>
+            <option value="worker">Worker</option>
+          </select>
+          <div className="pointer-events-none absolute inset-y-0 right-0 top-7 flex items-center px-4 text-text-gray">
+            <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+          </div>
         </div>
 
         {/* Step Indicator */}
@@ -272,6 +315,10 @@ const WorkerRegister = () => {
             </div>
           </form>
         )}
+
+        <div className="mt-6 text-center text-text-gray text-sm">
+          Already have an account? <Link to="/login" className="text-primary font-bold hover:underline">Login here</Link>
+        </div>
       </div>
       </div>
     </div>

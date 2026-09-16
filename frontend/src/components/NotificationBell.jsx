@@ -1,11 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
 import { FaBell, FaCheckDouble } from 'react-icons/fa';
 import { formatDistanceToNow } from 'date-fns';
 
 const NotificationBell = () => {
   const { notifications, unreadCount, markRead, markAllRead } = useNotification();
+  const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
   const dropdownRef = useRef(null);
@@ -33,7 +35,8 @@ const NotificationBell = () => {
 
   const handleViewAll = () => {
     setIsOpen(false);
-    navigate('/notifications');
+    const basePath = user?.role === 'admin' ? '/admin' : user?.role === 'worker' ? '/worker' : '/customer';
+    navigate(`${basePath}/notifications`);
   };
 
   return (

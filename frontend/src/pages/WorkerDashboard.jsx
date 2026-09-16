@@ -301,7 +301,7 @@ const WorkerDashboard = () => {
           <div className="bg-card-white rounded-2xl shadow-sm border border-border-gray p-6">
             <h2 className="text-xl font-bold text-navy mb-4">Notification Center</h2>
             <p className="text-sm text-text-gray mb-4">Stay updated with instant alerts.</p>
-            <button onClick={() => navigate('/notifications')} className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-lg font-bold transition flex justify-center items-center gap-2">
+            <button onClick={() => navigate('/worker/notifications')} className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-lg font-bold transition flex justify-center items-center gap-2">
                <Bell size={18} /> View Notifications
             </button>
           </div>

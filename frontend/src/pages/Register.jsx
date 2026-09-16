@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { User, Phone, Mail, Lock, MapPin, Target } from 'lucide-react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { User, Phone, Mail, Lock, MapPin, Target, ShieldCheck } from 'lucide-react';
 import { getUserLocation } from '../utils/location';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
@@ -8,8 +8,10 @@ import toast from 'react-hot-toast';
 
 const Register = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login } = useAuth();
   
+  const [role, setRole] = useState(location.state?.role || 'customer');
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -21,13 +23,35 @@ const Register = () => {
     area: ''
   });
 
+  const handleRoleChange = (newRole) => {
+    if (newRole === 'worker') {
+      navigate('/worker-register');
+    } else {
+      setRole(newRole);
+    }
+  };
+
   const handleLocation = async () => {
     try {
-      await getUserLocation();
-      setFormData(prev => ({ ...prev, address: 'Fetched from GPS Location' }));
+      const coords = await getUserLocation();
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.latitude}&lon=${coords.longitude}&addressdetails=1`);
+      const data = await res.json();
+      
+      const addressObj = data.address || {};
+      const fetchedCity = addressObj.city || addressObj.town || addressObj.village || addressObj.county || '';
+      const fetchedArea = addressObj.suburb || addressObj.neighbourhood || addressObj.residential || '';
+      const fullAddress = data.display_name || 'Fetched from GPS Location';
+
+      setFormData(prev => ({ 
+        ...prev, 
+        city: fetchedCity || prev.city,
+        area: fetchedArea || prev.area,
+        address: fullAddress 
+      }));
       toast.success('Location fetched successfully');
     } catch(e) {
-      toast.error('Location access denied');
+      console.error(e);
+      toast.error('Location access denied or failed to fetch address');
     }
   };
 
@@ -49,7 +73,7 @@ const Register = () => {
       const res = await api.post('/auth/register', payload);
       login(res.data.user, res.data.token);
       toast.success('Account created successfully');
-      navigate('/customer-dashboard');
+      navigate('/customer/dashboard');
     } catch (err) {
       toast.error(err.response?.data?.error || err.response?.data?.message || 'Registration failed');
     } finally {
@@ -61,9 +85,28 @@ const Register = () => {
     <div className="market-hero min-h-[calc(100vh-4rem)] py-8 md:py-14 px-4">
       <div className="max-w-md mx-auto bg-card-white rounded-2xl shadow-xl border border-border-gray p-6 md:p-8">
         <div className="text-center mb-8">
-          <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-primary mb-2">For customers</p>
-          <h1 className="text-3xl font-extrabold text-navy mb-2">Create your account</h1>
-          <p className="text-text-gray">Find trusted local help when you need it.</p>
+          <div className="w-16 h-16 bg-bg-soft-blue text-primary rounded-full flex items-center justify-center mx-auto mb-4">
+            <ShieldCheck size={32} />
+          </div>
+          <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-primary mb-2">Your local service account</p>
+          <h1 className="text-3xl font-extrabold text-navy mb-2">Create an account</h1>
+          <p className="text-text-gray text-sm">Sign up to manage bookings and connect with your local network.</p>
+        </div>
+
+        {/* Role Selection */}
+        <div className="mb-6 relative">
+          <label className="block text-sm font-bold text-navy mb-2">Select Account Type</label>
+          <select 
+            value={role} 
+            onChange={(e) => handleRoleChange(e.target.value)} 
+            className="w-full bg-gray-50 border border-border-gray text-navy text-sm font-bold rounded-xl focus:ring-2 focus:ring-primary focus:border-primary block p-3 appearance-none"
+          >
+            <option value="customer">Customer</option>
+            <option value="worker">Worker</option>
+          </select>
+          <div className="pointer-events-none absolute inset-y-0 right-0 top-7 flex items-center px-4 text-text-gray">
+            <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+          </div>
         </div>
 
         <form onSubmit={handleRegister} className="space-y-4">
@@ -123,8 +166,9 @@ const Register = () => {
           </button>
         </form>
 
-        <div className="mt-6 text-center text-text-gray">
-          Want to offer services? <Link to="/worker-register" className="text-primary font-bold hover:underline">Become a Worker</Link>
+
+        <div className="mt-6 text-center text-text-gray text-sm">
+          Already have an account? <Link to="/login" className="text-primary font-bold hover:underline">Login here</Link>
         </div>
       </div>
     </div>

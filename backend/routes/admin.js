@@ -9,24 +9,27 @@ const {
     getAllComplaints,
     verifyWorker,
     resolveComplaint,
-    getMatchingAnalytics
+    getMatchingAnalytics,
+    createAdmin
 } = require('../controllers/adminController');
-const { protect, authorize } = require('../middlewares/auth');
+const { protect } = require('../middlewares/auth');
+const { requireRole, requirePermission } = require('../middlewares/rbac');
 
 const router = express.Router();
 
 router.use(protect);
-router.use(authorize('admin'));
+router.use(requireRole('admin'));
 
-router.get('/stats', getStats);
-router.get('/matching-analytics', getMatchingAnalytics);
-router.get('/workers/pending', getPendingWorkers);
-router.get('/workers', getAllWorkers);
-router.get('/customers', getAllCustomers);
-router.get('/bookings', getAllBookings);
-router.get('/leads', getAllLeads);
-router.get('/complaints', getAllComplaints);
-router.patch('/workers/:id/verify', verifyWorker);
-router.patch('/complaints/:id/resolve', resolveComplaint);
+router.get('/stats', requirePermission('analytics.read'), getStats);
+router.get('/matching-analytics', requirePermission('analytics.read'), getMatchingAnalytics);
+router.get('/workers/pending', requirePermission('workers.manage'), getPendingWorkers);
+router.get('/workers', requirePermission('workers.manage'), getAllWorkers);
+router.get('/customers', requirePermission('users.manage'), getAllCustomers);
+router.get('/bookings', requirePermission('bookings.read'), getAllBookings);
+router.get('/leads', requirePermission('users.read'), getAllLeads);
+router.get('/complaints', requirePermission('safety.manage'), getAllComplaints);
+router.patch('/workers/:id/verify', requirePermission('verification.manage'), verifyWorker);
+router.patch('/complaints/:id/resolve', requirePermission('safety.manage'), resolveComplaint);
+router.post('/admins', requireRole('admin'), createAdmin); // Only admins can create admins
 
 module.exports = router;

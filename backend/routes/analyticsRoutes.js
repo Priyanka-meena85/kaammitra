@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
-const { protect, authorize } = require('../middlewares/auth');
+const { protect } = require('../middlewares/auth');
+const { requireRole, requirePermission } = require('../middlewares/rbac');
 const { getDateRange, getPreviousPeriod, buildDateFilter } = require('../utils/dateRange');
 const { calculateGrowth, groupByDayAggregation } = require('../utils/analyticsHelpers');
 
@@ -18,7 +19,8 @@ const { createAuditLog } = require('../services/auditService');
 
 // Middleware: All analytics routes require admin access
 router.use(protect);
-router.use(authorize('admin'));
+router.use(requireRole('admin'));
+router.use(requirePermission('analytics.read'));
 
 // Middleware: Log access to analytics
 router.use(async (req, res, next) => {
@@ -75,11 +77,11 @@ router.get('/summary', async (req, res) => {
       EmergencyLead.countDocuments({ ...dateFilter, ...cityFilter }),
       
       Payment.aggregate([
-        { $match: { ...buildDateFilter('createdAt', start, end), status: 'success' } },
-        { $group: { _id: null, totalRevenue: { $sum: '$amount' }, totalCommission: { $sum: '$platformFee' } } }
+        { $match: { ...buildDateFilter('createdAt', start, end), status: 'paid' } },
+        { $group: { _id: null, totalRevenue: { $sum: '$amount' }, totalCommission: { $sum: '$platformCommissionAmount' } } }
       ]),
       Payment.aggregate([
-        { $match: { ...buildDateFilter('createdAt', prevStart, prevEnd), status: 'success' } },
+        { $match: { ...buildDateFilter('createdAt', prevStart, prevEnd), status: 'paid' } },
         { $group: { _id: null, totalRevenue: { $sum: '$amount' } } }
       ]),
       
@@ -96,7 +98,7 @@ router.get('/summary', async (req, res) => {
       Worker.countDocuments({ ...todayFilter, ...cityFilter }),
       Booking.countDocuments({ ...todayFilter, ...cityFilter }),
       Payment.aggregate([
-        { $match: { ...buildDateFilter('createdAt', todayStart, new Date()), status: 'success' } },
+        { $match: { ...buildDateFilter('createdAt', todayStart, new Date()), status: 'paid' } },
         { $group: { _id: null, totalRevenue: { $sum: '$amount' } } }
       ]),
       Complaint.countDocuments({ ...todayFilter }),
@@ -173,17 +175,17 @@ router.get('/bookings', async (req, res) => {
 router.get('/revenue', async (req, res) => {
   try {
     const { start, end } = getDateRange(req.query);
-    const matchStage = { $match: { ...buildDateFilter('createdAt', start, end), status: 'success' } };
+    const matchStage = { $match: { ...buildDateFilter('createdAt', start, end), status: 'paid' } };
 
     const [byDay, totalStats] = await Promise.all([
       Payment.aggregate([
         matchStage,
-        { $group: { _id: groupByDayAggregation(), revenue: { $sum: '$amount' }, commission: { $sum: '$platformFee' } } },
+        { $group: { _id: groupByDayAggregation(), revenue: { $sum: '$amount' }, commission: { $sum: '$platformCommissionAmount' } } },
         { $sort: { _id: 1 } }
       ]),
       Payment.aggregate([
         matchStage,
-        { $group: { _id: null, totalRevenue: { $sum: '$amount' }, totalCommission: { $sum: '$platformFee' }, totalWorkerEarnings: { $sum: '$workerAmount' } } }
+        { $group: { _id: null, totalRevenue: { $sum: '$amount' }, totalCommission: { $sum: '$platformCommissionAmount' }, totalWorkerEarnings: { $sum: '$workerEarningAmount' } } }
       ])
     ]);
 

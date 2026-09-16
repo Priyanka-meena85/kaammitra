@@ -31,13 +31,8 @@ const AdminReports = () => {
     ];
 
     return (
-        <div className="space-y-6 max-w-5xl">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-800">Export Reports</h1>
-                    <p className="text-gray-500 mt-1">Download system data in CSV format for analysis</p>
-                </div>
-                
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6 w-full">
+            <div className="flex justify-end mb-4">
                 <div className="flex gap-4 p-4 bg-white rounded-lg shadow-sm border border-gray-100">
                     <div>
                         <label className="block text-xs font-medium text-gray-500 mb-1">City Filter</label>
@@ -45,7 +40,6 @@ const AdminReports = () => {
                             value={city} 
                             onChange={(e) => setCity(e.target.value)}
                             className="bg-gray-50 border border-gray-200 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary w-32"
-                        >
                             <option value="">All Cities</option>
                             <option value="Delhi">Delhi</option>
                             <option value="Mumbai">Mumbai</option>
@@ -70,7 +64,7 @@ const AdminReports = () => {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {reports.map((report) => (
                     <div key={report.id} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col justify-between hover:shadow-md transition">
                         <div>

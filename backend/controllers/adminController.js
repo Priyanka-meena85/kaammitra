@@ -244,3 +244,50 @@ exports.getMatchingAnalytics = async (req, res) => {
         res.status(400).json({ success: false, error: err.message });
     }
 };
+
+// @desc    Create a new Admin account
+// @route   POST /api/v1/admin/admins
+// @access  Private/Admin
+exports.createAdmin = async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        
+        if (!email || !password) {
+            return res.status(400).json({ success: false, error: 'Please provide email and password' });
+        }
+
+        const Admin = require('../models/Admin');
+        
+        // Check if admin already exists
+        const adminExists = await Admin.findOne({ username: email });
+        if (adminExists) {
+            return res.status(400).json({ success: false, error: 'Admin with this email already exists' });
+        }
+
+        // Create admin (password hashing is handled by the pre-save hook in Admin model)
+        const admin = new Admin({
+            username: email,
+            password,
+            role: 'admin'
+        });
+
+        await admin.save();
+
+        await createAuditLog({
+            actorId: req.user?._id,
+            actorRole: 'admin',
+            actorName: req.user?.name,
+            action: 'ADMIN_CREATED',
+            entityType: 'Admin',
+            entityId: admin._id,
+            description: `New Admin account created for ${email}`,
+            ipAddress: req.ip,
+            userAgent: req.get('user-agent'),
+            severity: 'high'
+        });
+
+        res.status(201).json({ success: true, message: 'Admin account created successfully' });
+    } catch (err) {
+        res.status(400).json({ success: false, error: err.message });
+    }
+};

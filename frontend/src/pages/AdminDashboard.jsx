@@ -27,7 +27,11 @@ const AdminDashboard = () => {
   const [payouts, setPayouts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [apiError, setApiError] = useState(null);
-  const [activeTab, setActiveTab] = useState('workers'); // workers, callbacks, areas, complaints, bookings
+  const [activeTab, setActiveTab] = useState('workers'); // workers, callbacks, areas, complaints, bookings, admins
+
+  const [newAdminEmail, setNewAdminEmail] = useState('');
+  const [newAdminPassword, setNewAdminPassword] = useState('');
+  const [isCreatingAdmin, setIsCreatingAdmin] = useState(false);
 
   useEffect(() => {
     const fetchAdminData = async () => {
@@ -138,6 +142,23 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleCreateAdmin = async (e) => {
+    e.preventDefault();
+    if (!newAdminEmail || !newAdminPassword) return toast.error('Please fill all fields');
+    
+    setIsCreatingAdmin(true);
+    try {
+      await api.post('/admin/admins', { email: newAdminEmail, password: newAdminPassword });
+      toast.success('Admin account created successfully');
+      setNewAdminEmail('');
+      setNewAdminPassword('');
+    } catch (err) {
+      toast.error(err.response?.data?.error || err.response?.data?.message || 'Failed to create admin');
+    } finally {
+      setIsCreatingAdmin(false);
+    }
+  };
+
   if (loading) return <div className="p-8 text-center text-text-gray font-medium">Loading admin dashboard...</div>;
   if (apiError) return (
     <div className="max-w-7xl mx-auto px-4 py-8">
@@ -155,24 +176,7 @@ const AdminDashboard = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-navy">Admin Control Center</h1>
-          <p className="text-text-gray">Platform Overview and Management</p>
-        </div>
-        <div className="flex flex-wrap gap-2 md:gap-4 justify-end">
-          <button onClick={() => navigate('/admin/analytics')} className="bg-indigo-50 text-indigo-700 border border-indigo-200 px-4 py-2 rounded-xl font-bold transition shadow-sm hover:bg-indigo-100 text-sm">Analytics</button>
-          <button onClick={() => navigate('/admin/reports')} className="bg-purple-50 text-purple-700 border border-purple-200 px-4 py-2 rounded-xl font-bold transition shadow-sm hover:bg-purple-100 text-sm">Reports</button>
-          <button onClick={() => navigate('/admin/audit-logs')} className="bg-gray-50 text-gray-700 border border-gray-200 px-4 py-2 rounded-xl font-bold transition shadow-sm hover:bg-gray-100 text-sm">Audit Logs</button>
-          <button onClick={() => navigate('/admin/trust-safety')} className="bg-red-50 text-red-700 border border-red-200 px-4 py-2 rounded-xl font-bold transition shadow-sm hover:bg-red-100 text-sm">Trust & Safety</button>
-          <button onClick={() => navigate('/notifications')} className="bg-blue-50 text-primary border border-blue-200 px-4 py-2 rounded-xl font-bold transition shadow-sm flex items-center gap-2 hover:bg-blue-100 text-sm">
-            <Bell size={16} /> Alerts
-          </button>
-          <button onClick={() => { logout(); navigate('/login'); }} className="bg-red-50 text-red-600 border border-red-200 px-4 py-2 rounded-xl font-bold transition shadow-sm hover:bg-red-100 text-sm">
-            Logout
-          </button>
-        </div>
-      </div>
+      {/* Header moved to AdminLayout */}
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
         <div className="bg-card-white rounded-2xl shadow-sm border border-border-gray p-4 hover:shadow-md transition">
@@ -264,6 +268,12 @@ const AdminDashboard = () => {
                 className={`px-6 py-4 font-bold text-sm md:text-base transition ${activeTab === 'areas' ? 'bg-white border-b-2 border-primary text-primary' : 'text-gray-500 hover:text-navy'}`}
             >
                 Area Launches ({(Array.isArray(areaRequests) ? areaRequests : []).length})
+            </button>
+            <button 
+                onClick={() => setActiveTab('admins')} 
+                className={`px-6 py-4 font-bold text-sm md:text-base transition ${activeTab === 'admins' ? 'bg-white border-b-2 border-primary text-primary' : 'text-gray-500 hover:text-navy'}`}
+            >
+                Admin Management
             </button>
         </div>
 
@@ -424,6 +434,45 @@ const AdminDashboard = () => {
                             </div>
                         </div>
                     ))}
+                </div>
+            )}
+            {/* Admins Tab */}
+            {activeTab === 'admins' && (
+                <div className="max-w-md bg-white border border-border-gray rounded-xl p-6 shadow-sm">
+                    <h3 className="text-xl font-bold text-navy mb-2">Create New Admin</h3>
+                    <p className="text-sm text-text-gray mb-6">Create a new system administrator account. Ensure they are authorized to access the platform.</p>
+                    <form onSubmit={handleCreateAdmin} className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-bold text-navy mb-2">Email Address / Username</label>
+                            <input 
+                                type="email" 
+                                required 
+                                value={newAdminEmail} 
+                                onChange={e => setNewAdminEmail(e.target.value)} 
+                                placeholder="admin@kaammitra.com" 
+                                className="w-full px-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-primary focus:outline-none" 
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-bold text-navy mb-2">Password</label>
+                            <input 
+                                type="password" 
+                                required 
+                                minLength="6"
+                                value={newAdminPassword} 
+                                onChange={e => setNewAdminPassword(e.target.value)} 
+                                placeholder="Secure password" 
+                                className="w-full px-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-primary focus:outline-none" 
+                            />
+                        </div>
+                        <button 
+                            disabled={isCreatingAdmin} 
+                            type="submit" 
+                            className="w-full bg-primary text-white font-bold py-3 rounded-xl shadow-md hover:bg-primary-hover transition-all disabled:opacity-50 mt-4"
+                        >
+                            {isCreatingAdmin ? 'Creating...' : 'Create Admin Account'}
+                        </button>
+                    </form>
                 </div>
             )}
         </div>

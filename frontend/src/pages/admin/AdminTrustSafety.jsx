@@ -3,6 +3,8 @@ import { getAdminSafetyReports, updateSafetyReport } from '../../api/safetyApi';
 import { getAdminReviews, moderateReview } from '../../api/reviewApi';
 import { toast } from 'react-hot-toast';
 import { format } from 'date-fns';
+import EmptyState from '../../components/EmptyState';
+import { ShieldCheck, MessageSquare } from 'lucide-react';
 
 const AdminTrustSafety = () => {
     const [reports, setReports] = useState([]);
@@ -59,11 +61,8 @@ const AdminTrustSafety = () => {
     };
 
     return (
-        <div className="p-6">
-            <div className="mb-8">
-                <h1 className="text-2xl font-bold text-gray-800">Trust & Safety Hub</h1>
-                <p className="text-gray-500 mt-1">Monitor risk, moderate reviews, and resolve safety incidents.</p>
-            </div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+
 
             <div className="flex space-x-4 mb-6 border-b border-gray-200">
                 <button 
@@ -89,7 +88,11 @@ const AdminTrustSafety = () => {
                     {activeTab === 'reports' && (
                         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                             {reports.length === 0 ? (
-                                <div className="p-8 text-center text-gray-500">No open safety reports.</div>
+                                <EmptyState 
+                                    icon={ShieldCheck} 
+                                    title="All Clear!" 
+                                    message="There are no open safety reports at the moment. Your platform is running smoothly." 
+                                />
                             ) : (
                                 <table className="min-w-full divide-y divide-gray-200">
                                     <thead className="bg-gray-50">
@@ -135,7 +138,11 @@ const AdminTrustSafety = () => {
                     {activeTab === 'reviews' && (
                         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                             {reviews.length === 0 ? (
-                                <div className="p-8 text-center text-gray-500">No reviews pending moderation.</div>
+                                <EmptyState 
+                                    icon={MessageSquare} 
+                                    title="No Pending Reviews" 
+                                    message="There are currently no reviews flagged for moderation. You're all caught up." 
+                                />
                             ) : (
                                 <table className="min-w-full divide-y divide-gray-200">
                                     <thead className="bg-gray-50">
