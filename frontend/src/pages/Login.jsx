@@ -10,7 +10,7 @@ const Login = () => {
   const { login } = useAuth();
   
   const [role, setRole] = useState('customer');
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -18,7 +18,7 @@ const Login = () => {
     e.preventDefault();
     setIsLoading(true);
     try {
-      const res = await api.post('/auth/login', { email, password, role });
+      const res = await api.post('/auth/login', { identifier, password, role });
       login(res.data.user, res.data.token);
       toast.success('Login successful!');
       navigate(res.data.user.role === 'worker' ? '/worker/dashboard' : (res.data.user.role === 'admin' ? '/admin' : '/customer/dashboard'));
@@ -61,7 +61,7 @@ const Login = () => {
         <form onSubmit={handleLogin} className="space-y-5">
           <div className="relative">
             {role === 'admin' ? <User className="absolute left-3 top-1/2 -translate-y-1/2 text-border-gray" size={20} /> : <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-border-gray" size={20} />}
-            <input aria-label={role === 'admin' ? "Username" : "Email Address"} type={role === 'admin' ? 'text' : 'email'} required placeholder={role === 'admin' ? "Username" : "Email Address"} value={email} onChange={e => setEmail(e.target.value)} className="w-full pl-10 pr-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-primary" />
+            <input aria-label={role === 'admin' ? "Username" : "Email or phone"} type="text" required placeholder={role === 'admin' ? "Username" : "Email or phone"} value={identifier} onChange={e => setIdentifier(e.target.value)} className="w-full pl-10 pr-4 py-3 rounded-xl border border-border-gray focus:ring-2 focus:ring-primary" />
           </div>
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-border-gray" size={20} />

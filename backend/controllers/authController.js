@@ -53,16 +53,20 @@ exports.register = async (req, res) => {
             addressProofUrl, addressProofPublicId, documentType
         } = req.body;
 
-        if (!email || !password || !name) {
-            return res.status(400).json({ success: false, error: 'Please provide name, email and password' });
+        if ((!email && !phone) || !password || !name) {
+            return res.status(400).json({ success: false, error: 'Please provide name, email or phone, and password' });
         }
 
         let existingUser = null;
 
         if (role === 'worker') {
-            existingUser = await Worker.findOne({ email });
+            existingUser = email
+                ? await Worker.findOne({ email: email.toLowerCase() })
+                : await Worker.findOne({ phone: { $in: getPhoneVariants(phone) } });
         } else {
-            existingUser = await Customer.findOne({ email });
+            existingUser = email
+                ? await Customer.findOne({ email: email.toLowerCase() })
+                : await Customer.findOne({ phone: { $in: getPhoneVariants(phone) } });
         }
         
         if (existingUser) {
@@ -137,18 +141,23 @@ exports.register = async (req, res) => {
 // @access  Public
 exports.login = async (req, res) => {
     try {
-        let { email, password, role } = req.body;
+        const { email, phone, identifier, password, role } = req.body;
+        const loginIdentifier = String(identifier || email || phone || '').trim();
 
-        if (!email || !password || !role) {
-            return res.status(400).json({ success: false, error: 'Please provide email, password and role' });
+        if (!loginIdentifier || !password || !role) {
+            return res.status(400).json({ success: false, error: 'Please provide email or phone, password and role' });
         }
         
         let user;
         if (role === 'customer' || role === 'worker') {
             const Model = role === 'customer' ? Customer : Worker;
-            user = await Model.findOne({ email }).select('+password');
+            const isEmail = loginIdentifier.includes('@');
+            const query = isEmail
+                ? { email: loginIdentifier.toLowerCase() }
+                : { phone: { $in: getPhoneVariants(loginIdentifier) } };
+            user = await Model.findOne(query).select('+password');
         } else if (role === 'admin') {
-            user = await Admin.findOne({ username: email }).select('+password'); // Using email field for username
+            user = await Admin.findOne({ username: loginIdentifier }).select('+password');
         } else {
             return res.status(400).json({ success: false, error: 'Invalid role' });
         }
