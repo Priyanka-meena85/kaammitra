@@ -47,7 +47,10 @@ const allowedOrigins = process.env.NODE_ENV === 'production'
 app.use(cors({
   origin: function (origin, callback) {
     if (!origin) return callback(null, true);
-    if (process.env.NODE_ENV !== 'production' && origin.startsWith('http://localhost')) {
+    if (
+      process.env.NODE_ENV !== 'production' &&
+      (origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1'))
+    ) {
       return callback(null, true);
     }
     if (allowedOrigins.indexOf(origin) === -1) {
@@ -133,7 +136,7 @@ app.get('/health', (req, res) => {
 app.use(notFound);
 app.use(errorHandler);
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 
 server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);

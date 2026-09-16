@@ -44,10 +44,10 @@ self.addEventListener('fetch', (event) => {
           return response;
         }
         return fetch(event.request).catch(() => {
-            // Fallback for navigation requests
-            if (event.request.mode === 'navigate') {
-                return caches.match('/index.html');
-            }
+          if (event.request.mode === 'navigate') {
+            return caches.match('/index.html');
+          }
+          return Response.error();
         });
       })
   );

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Star, MapPin, BadgeCheck } from 'lucide-react';
+import { Star, MapPin, BadgeCheck, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const WorkerCard = ({ id, name, service, rating, reviews, distance, price, available }) => {
@@ -52,8 +52,5 @@ const WorkerCard = ({ id, name, service, rating, reviews, distance, price, avail
     </div>
   );
 };
-
-// Assuming User icon was meant to be imported
-import { User } from 'lucide-react';
 
 export default WorkerCard;

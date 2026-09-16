@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const { uploadDocument } = require('../controllers/uploadController');
-const { protect } = require('../middlewares/auth');
+const { publicWriteLimiter } = require('../middlewares/rateLimit');
 
-router.post('/', protect, uploadDocument);
+router.post('/', publicWriteLimiter, uploadDocument);
 
 module.exports = router;

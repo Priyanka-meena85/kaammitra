@@ -30,8 +30,8 @@ const Login = () => {
   };
 
   return (
-    <div className="market-hero min-h-[calc(100vh-4rem)] py-10 md:py-16 px-4">
-      <div className="max-w-md mx-auto bg-card-white rounded-2xl shadow-xl border border-border-gray p-6 md:p-8">
+    <div className="market-hero min-h-[calc(100vh-4rem)] overflow-x-hidden py-10 md:py-16 px-4">
+      <div className="w-full max-w-md mx-auto bg-card-white rounded-2xl shadow-xl border border-border-gray p-6 md:p-8">
         <div className="text-center mb-8">
           <div className="w-16 h-16 bg-bg-soft-blue text-primary rounded-full flex items-center justify-center mx-auto mb-4">
             <ShieldCheck size={32} />
@@ -73,7 +73,7 @@ const Login = () => {
           {role !== 'admin' && (
             <div className="text-center">
               <button type="button" onClick={() => navigate('/forgot-password')} className="text-sm text-text-gray hover:text-primary font-medium">
-                Password bhool gaye?
+                Forgot password?
               </button>
             </div>
           )}

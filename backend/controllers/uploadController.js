@@ -2,9 +2,14 @@ const multer = require('multer');
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const cloudinary = require('../config/cloudinary');
 const path = require('path');
+const fs = require('fs');
 
-// Fallback check
-const isCloudinaryConfigured = !!process.env.CLOUDINARY_API_KEY;
+const isCloudinaryConfigured = Boolean(
+    process.env.CLOUDINARY_CLOUD_NAME &&
+    process.env.CLOUDINARY_API_KEY &&
+    process.env.CLOUDINARY_API_SECRET
+);
+const isProduction = process.env.NODE_ENV === 'production';
 
 let storage;
 if (isCloudinaryConfigured) {
@@ -18,9 +23,15 @@ if (isCloudinaryConfigured) {
         }
     });
 } else {
-    // If not configured, we don't silently fallback to disk in production
-    // We'll catch this in the uploadDocument function
-    storage = multer.memoryStorage();
+    const uploadDirectory = path.join(__dirname, '../uploads');
+    fs.mkdirSync(uploadDirectory, { recursive: true });
+    storage = multer.diskStorage({
+        destination: uploadDirectory,
+        filename: (req, file, cb) => {
+            const extension = path.extname(file.originalname).toLowerCase();
+            cb(null, `${Date.now()}-${Math.round(Math.random() * 1e9)}${extension}`);
+        }
+    });
 }
 
 function checkFileType(file, cb) {
@@ -44,9 +55,8 @@ const upload = multer({
 }).single('file'); // Expect 'file' field
 
 exports.uploadDocument = (req, res) => {
-    // Prevent fallback if cloudinary is missing
-    if (!isCloudinaryConfigured) {
-        return res.status(400).json({ success: false, message: 'Cloudinary is not configured.' });
+    if (!isCloudinaryConfigured && isProduction) {
+        return res.status(503).json({ success: false, message: 'File uploads are not configured.' });
     }
 
     upload(req, res, (err) => {
@@ -57,11 +67,14 @@ exports.uploadDocument = (req, res) => {
             return res.status(400).json({ success: false, message: 'Please upload a file' });
         }
         
-        // Cloudinary file details
+        const url = isCloudinaryConfigured
+            ? req.file.path
+            : `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+
         res.status(200).json({
             success: true,
-            url: req.file.path, // multer-storage-cloudinary puts the secure_url in req.file.path
-            public_id: req.file.filename // and public_id in req.file.filename
+            url,
+            public_id: req.file.filename
         });
     });
 };
