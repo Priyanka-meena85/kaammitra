@@ -40,6 +40,7 @@ const AdminReports = () => {
                             value={city} 
                             onChange={(e) => setCity(e.target.value)}
                             className="bg-gray-50 border border-gray-200 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary w-32"
+                        >
                             <option value="">All Cities</option>
                             <option value="Delhi">Delhi</option>
                             <option value="Mumbai">Mumbai</option>
